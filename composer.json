@@ -17,6 +17,9 @@
     "autoload": {
         "psr-4": {"Lucid\\Component\\Container\\": "/src/php"}
     },
+    "autoload-dev": {
+        "psr-4": {"Lucid\\Component\\Container\\": "src/php"}
+    },
 
     "require": {
         "php": "^7.0"
