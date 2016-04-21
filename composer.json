@@ -1,7 +1,6 @@
 {
-    "name": "container",
+    "name": "dev-lucid/container",
     "type":"library",
-    "repo": "dev-lucid/container",
     "description": "",
     "authors": [
         {
