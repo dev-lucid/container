@@ -5,7 +5,7 @@ class PrefixDecorator
 {
     protected $prefix    = null;
     protected $container = null;
-    
+
     function __construct(string $prefix = '', $container)
     {
         $this->prefix = $prefix;
@@ -21,6 +21,11 @@ class PrefixDecorator
     {
         $value = &$this->container->get($this->prefix.$id, $defaultValue = null);
         return $value;
+    }
+
+    public function set(string $id, $newValue)
+    {
+        return $this->container->set($this->prefix.$id, $newValue);
     }
 
     public function un_set(string $id)
