@@ -8,7 +8,7 @@ interface ContainerInterface
     public function has(string $id);
     public function get(string $id, $defaultValue);
 
-    public function un_set(string $id);
+    public function delete(string $id);
     public function set(string $id, $defaultValue);
 
     public function string(string $id, $defaultValue);

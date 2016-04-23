@@ -23,17 +23,15 @@ class RequestContainer extends Container
 
     public function bool(string $id, $defaultValue = false) : bool
     {
-        if (isset($this->source[$id]) === false) {
-            return $defaultValue;
-        }
+        $value = $this->get($id, $defaultValue);
 
-        if (in_array($this->source[$id], $this->boolTrueValues, true) === true) {
+        if (in_array($value, $this->boolTrueValues, true) === true) {
             return true;
         }
 
-        if (in_array($this->source[$id], $this->boolFalseValues, true) === true) {
+        if (in_array($value, $this->boolFalseValues, true) === true) {
             return false;
         }
-        return $defaultValue;
+        return $value;
     }
 }

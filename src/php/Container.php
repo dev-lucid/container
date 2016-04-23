@@ -39,12 +39,13 @@ class Container implements ContainerInterface
         return isset($this->source[$id]);
     }
 
-    public function get(string $id, $defaultValue = null)
+    public function &get(string $id, $defaultValue = null)
     {
-        return $this->source[$id] ?? $defaultValue;
+        $value =& $this->source[$id] ?? $defaultValue;
+        return $value;
     }
 
-    public function un_set(string $id)
+    public function delete(string $id)
     {
         unset($this->source[$id]);
         return $this;
@@ -52,55 +53,46 @@ class Container implements ContainerInterface
 
     public function set(string $id, $newValue)
     {
-        $this->source[$id] = $newValue;
+        $this->source[$id] =& $newValue;
         return $this;
     }
 
     public function string(string $id, $defaultValue = null) : string
     {
-        return strval($this->source[$id] ?? $defaultValue);
+        $value = $this->get($id, $defaultValue);
+        return strval($value);
     }
 
     public function int(string $id, $defaultValue = null) : int
     {
-        if (isset($this->source[$id]) === true) {
-            return intval($this->source[$id]);
-        } else {
-            return $defaultValue;
-        }
+        $value = $this->get($id, $defaultValue);
+        return intval($value);
     }
 
     public function float(string $id, $defaultValue = null): float
     {
-        if (isset($this->source[$id]) === true) {
-            return floatval($this->source[$id]);
-        } else {
-            return $defaultValue;
-        }
+        $value = $this->get($id, $defaultValue);
+        return floatval($value);
     }
 
     public function bool(string $id, $defaultValue=null) : bool
     {
-        if (isset($this->source[$id]) === true) {
-            return boolval($this->source[$id]);
-        } else {
-            return $defaultValue;
-        }
+        $value = $this->get($id, $defaultValue);
+        return boolval($value);
     }
 
     public function DateTime(string $id, $defaultValue = null) : \DateTime
     {
         $val = null;
-        if (isset($this->source[$id]) === true) {
-            if (is_numeric($this->source[$id]) === true) {
-                return \DateTime::createFromFormat('U', $this->source[$id]);
-            } elseif (is_string($this->source[$id]) === true) {
-                return \DateTime::createFromFormat($this->dateTimeStringFormat, $this->source[$id]);
-            } else {
-                throw new \Exception('Not sure how to convert to DateTime: '.$this->source[$id]);
-            }
+        $value = $this->get($id, $defaultValue);
+
+        if (is_numeric($value) === true) {
+            return \DateTime::createFromFormat('U', $value);
+        } elseif (is_string($value) === true) {
+            return \DateTime::createFromFormat($this->dateTimeStringFormat, $value);
+        } else {
+            throw new \Exception('Not sure how to convert to DateTime: '.$value);
         }
-        return $defaultValue;
     }
 
     public function getArray() : array

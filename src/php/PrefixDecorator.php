@@ -12,50 +12,60 @@ class PrefixDecorator
         $this->container = $container;
     }
 
+    protected function buildFinalId(string $id)
+    {
+        $finalId = null;
+        if (strpos($id, '../') === 0) {
+            return substr($id, 3);
+        } else {
+            return $this->prefix . $id;
+        }
+    }
+
     public function has(string $id)
     {
-        return $this->container->has($this->prefix.$id);
+        return $this->container->has($this->buildFinalId($id));
     }
 
     public function &get(string $id, $defaultValue = null)
     {
-        $value = &$this->container->get($this->prefix.$id, $defaultValue = null);
+        $value =& $this->container->get($this->buildFinalId($id), $defaultValue = null);
         return $value;
     }
 
     public function set(string $id, $newValue)
     {
-        return $this->container->set($this->prefix.$id, $newValue);
+        return $this->container->set($this->buildFinalId($id), $newValue);
     }
 
-    public function un_set(string $id)
+    public function delete(string $id)
     {
-        return $this->container->un_set($this->prefix.$id);
+        return $this->container->delete($this->buildFinalId($id));
     }
 
     public function string(string $id, $defaultValue = null)
     {
-        return $this->container->string($this->prefix.$id, $defaultValue);
+        return $this->container->string($this->buildFinalId($id), $defaultValue);
     }
 
     public function int(string $id, $defaultValue = null)
     {
-        return $this->container->int($this->prefix.$id, $defaultValue);
+        return $this->container->int($this->buildFinalId($id), $defaultValue);
     }
 
     public function float(string $id, $defaultValue = null)
     {
-        return $this->container->float($this->prefix.$id, $defaultValue);
+        return $this->container->float($this->buildFinalId($id), $defaultValue);
     }
 
     public function bool(string $id, $defaultValue = null)
     {
-        return $this->container->bool($this->prefix.$id, $defaultValue);
+        return $this->container->bool($this->buildFinalId($id), $defaultValue);
     }
 
     public function DateTime(string $id, $defaultValue = null)
     {
-        return $this->container->DateTime($this->prefix.$id, $defaultValue);
+        return $this->container->DateTime($this->buildFinalId($id), $defaultValue);
     }
 
     public function __call($method, $parameters)

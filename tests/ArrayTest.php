@@ -1,81 +1,31 @@
 <?php
 use Lucid\Component\Container\Container;
+use Lucid\Component\Container\PrefixDecorator;
 
 class ArrayTest extends \PHPUnit_Framework_TestCase
 {
-    public function testSource()
+    public $container = null;
+    public $decoratedContainer = null;
+    public function setup()
     {
-        $container = new Container();
-        $this->assertTrue(is_array($container->getArray()));
+        $this->container = new Container();
+        $this->decoratedContainer = new PrefixDecorator('test:', $this->container);
     }
 
-    public function testIssetUnset()
+    public function testArraySetGet()
     {
-        $container = new Container();
-        $this->assertFalse($container->has('testKey'));
-        $container->set('testKey', 'testValue');
-        $this->assertTrue($container->has('testKey'));
-        $container->un_set('testKey');
-        $this->assertFalse($container->has('testKey'));
+        $this->container->set('testArray', []);
+        $this->container->get('testArray')['index1'] = 'value1';
+        $this->assertEquals($this->container->get('testArray')['index1'], 'value1');
+        $this->container->get('testArray')['index2'] = ['index3'=>'value2'];
+        $this->assertEquals($this->container->get('testArray')['index2']['index3'], 'value2');
+
     }
 
-    public function testString()
+    public function testDecoratedArraySetGet()
     {
-        $container = new Container();
-        $container->set('testKey', 'testValue');
-        $this->assertTrue($container->has('testKey'));
-        $this->assertTrue($container->string('testKey') == 'testValue');
-        $container->un_set('testKey');
-        $this->assertFalse($container->has('testKey'));
-    }
-
-    public function testStringNoCasting()
-    {
-        $container = new Container();
-
-        $container->set('testKey', '1');
-        $this->assertTrue($container->has('testKey'));
-        $this->assertFalse(is_integer($container->string('testKey')));
-        $this->assertTrue(is_string($container->string('testKey')));
-        $this->assertFalse($container->string('testKey') === 1);
-        $container->un_set('testKey');
-        $this->assertFalse($container->has('testKey'));
-
-        $container->set('testKey', 1);
-        $this->assertTrue($container->has('testKey'));
-        $this->assertFalse(is_integer($container->string('testKey')));
-        $this->assertTrue(is_string($container->string('testKey')));
-        $this->assertFalse($container->string('testKey') === 1);
-        $container->un_set('testKey');
-        $this->assertFalse($container->has('testKey'));
-    }
-
-    public function testInteger()
-    {
-        $container = new Container();
-        $container->set('testKey', 1);
-        $this->assertTrue($container->has('testKey'));
-        $this->assertTrue($container->int('testKey') == 1);
-        $container->un_set('testKey');
-        $this->assertFalse($container->has('testKey'));
-    }
-
-    public function testIntegerNoCasting()
-    {
-        $container = new Container();
-        $container->set('testKey', '1');
-        $this->assertTrue($container->has('testKey'));
-        $this->assertTrue(is_integer($container->int('testKey')));
-        $this->assertTrue($container->int('testKey') === 1);
-        $this->assertFalse($container->int('testKey') === '1');
-        $container->un_set('testKey');
-        $this->assertFalse($container->has('testKey'));
-
-        $container->set('testKey', 1);
-        $this->assertTrue($container->has('testKey'));
-        $this->assertTrue(is_integer($container->int('testKey')));
-        $this->assertTrue($container->int('testKey') === 1);
-        $container->un_set('testKey');
-        $this->assertFalse($container->has('testKey'));
+        $this->decoratedContainer->set('decIndex1', []);
+        $this->decoratedContainer->get('decIndex1')['index2'] = 'decValue1';
+        $this->assertEquals($this->decoratedContainer->get('decIndex1')['index2'], 'decValue1');
     }
 }

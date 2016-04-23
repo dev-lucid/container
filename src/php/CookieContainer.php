@@ -44,10 +44,11 @@ class CookieContainer extends Container
         return $this;
     }
 
-    public function un_set(string $id)
+    public function delete(string $id)
     {
         unset($this->source[$id]);
         setcookie($id, '', time() - 3600, $this->path, $this->domain, $this->secureOnly, $this->httpOnly);
+        return $this;
     }
 
     public function set(string $id, $newValue)
