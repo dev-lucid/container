@@ -15,10 +15,16 @@ class PrefixDecoratorTest extends \PHPUnit_Framework_TestCase
     public function testBasic()
     {
         $this->container->set('value1', 'hi');
-        $this->assertEquals($this->container->get('value1'), 'hi');
+        $this->assertEquals($this->container->string('value1'), 'hi');
         $this->decoratedContainer->set('value1', 'hello');
         $this->assertEquals($this->container->get('value1'), 'hi');
         $this->assertEquals($this->container->get('test:value1'), 'hello');
+
+        $this->decoratedContainer->set('valueInt', 256);
+        $this->decoratedContainer->set('valueFloat', 256.256);
+        $this->assertEquals($this->decoratedContainer->int('valueInt'), 256);
+        $this->assertEquals($this->decoratedContainer->float('valueFloat'), 256.256);
+
 
         $val = $this->decoratedContainer->get('value1');
         $this->assertEquals($val, 'hello');

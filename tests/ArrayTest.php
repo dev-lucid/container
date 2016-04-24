@@ -24,6 +24,9 @@ class ArrayTest extends \PHPUnit_Framework_TestCase
 
     public function testDecoratedArraySetGet()
     {
+        $this->container = new Container();
+        $this->decoratedContainer = new PrefixDecorator('test:', $this->container);
+
         $this->decoratedContainer->set('decIndex1', []);
         $this->decoratedContainer->get('decIndex1')['index2'] = 'decValue1';
         $this->assertEquals($this->decoratedContainer->get('decIndex1')['index2'], 'decValue1');
