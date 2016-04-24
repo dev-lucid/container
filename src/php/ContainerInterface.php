@@ -19,4 +19,6 @@ interface ContainerInterface
 
     public function getArray();
     public function setValues(array $array);
+
+    public function requireInterfacesForIndex(string $id, ...$interfaces);
 }

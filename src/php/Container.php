@@ -4,15 +4,62 @@ namespace Lucid\Component\Container;
 class Container implements ContainerInterface
 {
     protected $source = [];
-    protected $dateTimeStringFormat = \DateTime::ISO8601;
+    protected $dateTimeFormats = [\DateTime::ISO8601, \DateTime::W3C, 'U'];
+    protected $requiredInterfaces = [];
+    protected $locks = [];
 
     public function __construct()
     {
     }
 
-    public function setDateTimeStringFormat(string $newFormat)
+    public function requireInterfacesForIndex(string $id, ...$interfaces)
     {
-        $this->dateTimeStringFormat = $newFormat;
+        if (isset($this->requiredInterfaces[$id]) === false) {
+            $this->requiredInterfaces[$id] = [];
+        }
+        $this->requiredInterfaces[$id] = array_merge($this->requiredInterfaces[$id], $interfaces);
+        if ($this->has($id) === true) {
+            $this->checkRequiredInterfaces($id);
+        }
+    }
+
+    protected function checkRequiredInterfaces(string $id)
+    {
+        if (isset($this->requiredInterfaces[$id]) === false) {
+            return;
+        }
+
+        if (is_object($this->source[$id]) === false) {
+            throw new RequiredInterfaceException('Container index '.$id.' does not contain an object, but this index is required to be an object that implements the following interfaces: '.implode(', ', $this->requiredInterfaces[$id]));
+            # throw new \Exception('Container index '.$id.' does not contain an object, but this index is required to be an object that implements the following interfaces: '.implode(', ', $this->requiredInterfaces[$id]));
+        }
+
+        $implements = class_implements($this->source[$id]);
+        foreach ($this->requiredInterfaces[$id] as $interface) {
+            if (in_array($interface, $implements) === false) {
+                throw new RequiredInterfaceException('Container index '.$id.' does not implement a required interface. This index must implement the following interfaces: '.implode(', ', $this->requiredInterfaces[$id]));
+                # throw new \Exception();
+            }
+        }
+    }
+
+    public function lock(string $id)
+    {
+        $this->locks[$id] = true;
+        return $this;
+    }
+
+    public function unlock(string $id)
+    {
+        if (isset($this->locks[$id]) === true) {
+            unset($this->locks[$id]);
+        }
+        return $this;
+    }
+
+    public function setDateTimeFormats(...$newFormats)
+    {
+        $this->dateTimeStringFormats = $newFormats;
         return $this;
     }
 
@@ -53,7 +100,11 @@ class Container implements ContainerInterface
 
     public function set(string $id, $newValue)
     {
+        if (isset($this->locks[$id]) === true) {
+            throw new LockedIndexException();
+        }
         $this->source[$id] =& $newValue;
+        $this->checkRequiredInterfaces($id);
         return $this;
     }
 
@@ -89,10 +140,14 @@ class Container implements ContainerInterface
         if (is_numeric($value) === true) {
             return \DateTime::createFromFormat('U', $value);
         } elseif (is_string($value) === true) {
-            return \DateTime::createFromFormat($this->dateTimeStringFormat, $value);
-        } else {
-            throw new \Exception('Not sure how to convert to DateTime: '.$value);
+            foreach ($this->dateTimeFormats as $format) {
+                $parseResult = \DateTime::createFromFormat($format, $value);
+                if ($parseResult !== false) {
+                    return $parseResult;
+                }
+            }
         }
+        throw new \Exception('Not sure how to convert to DateTime: '.$value);
     }
 
     public function getArray() : array

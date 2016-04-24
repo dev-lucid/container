@@ -27,6 +27,21 @@ class PrefixDecorator
         return $this->container->has($this->buildFinalId($id));
     }
 
+    public function lock(string $id)
+    {
+        return $this->container->lock($this->buildFinalId($id));
+    }
+
+    public function unlock(string $id)
+    {
+        return $this->container->unlock($this->buildFinalId($id));
+    }
+
+    public function requireInterfacesForIndex(string $id, ...$interfaces)
+    {
+        return $this->container->requireInterfacesForIndex($this->buildFinalId($id), ...$interfaces);
+    }
+
     public function &get(string $id, $defaultValue = null)
     {
         $value =& $this->container->get($this->buildFinalId($id), $defaultValue = null);
