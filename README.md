@@ -109,7 +109,7 @@ How about an example?
 
 ```php
 $masterConfig = new \Lucid\Component\Container\Container();
-$emailConfig = new \Lucid\Component\Container\PrefixDecorator('email:', $masterConfig);
+$emailConfig = new \Lucid\Component\Container\PrefixDecorator('email/', $masterConfig);
 
 $masterConfig->set('root-path', __DIR__);
 $emailConfig->set('smtp-host', 'smtp.gmail.com');
@@ -122,7 +122,7 @@ You *should* get something that looks like this:
 ```
 (
   [root-path] => /var/www/myprojectorsomething
-  [email:smtp-host] => smtp.gmail.com
+  [email/smtp-host] => smtp.gmail.com
 )
 ```
 
@@ -185,3 +185,12 @@ Note: basically nothing prevents an index from being unlocked, so if you're real
 ## DateTime parsing
 
 When trying to convert a value to a DateTime object, by default Container will call \DateTime::createFromFormat and try 3 different formats in order: \DateTime::ISO8601, \DateTime::W3C, 'U'. If any of those attempts does not fail, the result is returned. You can set which formats are tried by calling ->setDateTimeFormats(...$newFormats). Note that this replaces which formats are tested, it is NOT additive.
+
+## Exception Classes
+
+4 Exception classes are provided:
+
+* DateTimeParseException: thrown when data cannot be parsed by \DateTime::createFromFormat
+* InvalidSourceException: thrown when ->setSource($newSource) is called, but the new source is not an array, nor an object that supports both the ArrayAccess and Traversable interfaces
+* LockedIndexEception: thrown when trying to set a locked index
+* RequiredInterfaceException: thrown when an index requires an object that implements one more more interfaces, and you attempt to set that index to an object that does not implement those interfaces

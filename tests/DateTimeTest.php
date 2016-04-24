@@ -22,5 +22,10 @@ class DateTimeTest extends \PHPUnit_Framework_TestCase
         $dt2 = $container->DateTime('iso8601_jan1_1970');
         $this->assertEquals($dt2->format(\DateTime::ISO8601), '1970-01-01T00:00:01+0000');
         $this->assertEquals($dt2->format('U'), 1);
+
+        $container->set('goingToError', 'hello');
+        $this->setExpectedException(\Lucid\Component\Container\DateTimeParseException::class);
+        $container->DateTime('goingToError');
+
     }
 }

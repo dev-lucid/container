@@ -65,19 +65,18 @@ class Container implements ContainerInterface
 
     public function setSource(&$newSource)
     {
-
-        $invalidSourceMessage = 'Source for store must either be an array, or an object whose class implements the ArrayAccess and Iterator interfaces.';
-        if (is_array($newSource) === false ) {
-            if (is_object($newSource) === true) {
-                $classImplements = class_implements($newSource);
-                if (in_array('ArrayAccess', $classImplements) === false && in_array('Iterator', $classImplements) === false) {
-                    throw new \Exception($invalidSourceMessage);
-                }
-            } else {
-                throw new \Exception($invalidSourceMessage);
+        if (is_array($newSource) === true ) {
+            $this->source =& $newSource;
+        } else if (is_object($newSource) === true) {
+            $classImplements = class_implements($newSource);
+            if (in_array('ArrayAccess', $classImplements) === false || in_array('Iterator', $classImplements) === false) {
+                throw new InvalidSourceException();
             }
+            $this->source =& $newSource;
+        } else {
+            throw new InvalidSourceException();
         }
-        $this->source =& $newSource;
+
         return $this;
     }
 
@@ -147,7 +146,7 @@ class Container implements ContainerInterface
                 }
             }
         }
-        throw new \Exception('Not sure how to convert to DateTime: '.$value);
+        throw new DateTimeParseException($value, $this->dateTimeFormats);
     }
 
     public function getArray() : array
