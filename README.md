@@ -11,7 +11,7 @@ A data container that implements the PSR-11 interface, plus a few extra features
 I wrote this class for several purposes:
 
 * To act as a front end to $\_COOKIE, $\_SESSION, $\_REQUEST, and a config array while providing a consistent API for retrieving indexes as particular types
-* To ease writing unit tests that were previously using $\_COOKIE, $\_SESSION, $\_REQUEST, etc so that they could use a mocked up container that was stored in the same location instead and use the same API. 
+* To ease writing unit tests that were previously using $\_COOKIE, $\_SESSION, $\_REQUEST, etc so that they could use a mocked up container that was stored in the same location instead and use the same API.
 
 
 There are 6 functions for getting your data out:
@@ -52,7 +52,7 @@ print_r($container->DateTime('mydate'));
 ```
 
 
-This package also includes several related classes that may be useful in specific circumstances. 
+This package also includes several related classes that may be useful in specific circumstances.
 
 ## RequestContainer
 
@@ -65,7 +65,7 @@ The second part is meant to handle html checkboxes, which may submit their value
 
 Inversely, if the data in the RequestContainer's index contains any of the following values, the ->bool function will return false: '', '0', 0, 'no', 'false', false, null.
 
-You can change the list of acceptable values for true or false by using the ->setBoolTrueValues(...$values) function, and the corresponding ->setBoolFalseValues(...$values) function. Note that both of these functions completely replace the default values, they are NOT additive. 
+You can change the list of acceptable values for true or false by using the ->setBoolTrueValues(...$values) function, and the corresponding ->setBoolFalseValues(...$values) function. Note that both of these functions completely replace the default values, they are NOT additive.
 
 ## CookieContainer
 
@@ -77,7 +77,7 @@ The CookieContainer class functions identically to Container (which it extends),
 * ->setSecureOnly(bool $secureOnly)
 * ->setHttpOnly(bool $httpOnly)
 
-Internally, the cookie container calls set\_cookie rather than setting indexes of an array. Each of the setters is used to set the values passed to set_cookie's parameters.  Note that the value passed to setExpiresOffset will be added to now(). The default value is 2592000 (30 days). 
+Internally, the cookie container calls set\_cookie rather than setting indexes of an array. Each of the setters is used to set the values passed to set_cookie's parameters.  Note that the value passed to setExpiresOffset will be added to now(). The default value is 2592000 (30 days).
 
 ## Storing Arrays
 
@@ -129,18 +129,18 @@ You *should* get something that looks like this:
 Importantly, anything that uses the $emailConfig version doesn't have to be aware of the email: prefix. For example:
 
 ```
-echo($emailConfig->get('smtp-host')); 
+echo($emailConfig->get('smtp-host'));
  # This should echo smtp.gmail.com
-echo($emailConfig->get('root-path','none found')); 
+echo($emailConfig->get('root-path','none found'));
  # this should echo 'none found'
 ```
 
 But, anything that uses the $masterConfig version *can* access indexes prefixed by the decorator:
 
 ```
-echo($masterConfig->get('email:smtp-host')); 
+echo($masterConfig->get('email:smtp-host'));
  # This should echo smtp.gmail.com
-echo($masterConfig->get('root-path')); 
+echo($masterConfig->get('root-path'));
  # this should echo something like  /var/www/myproject
 ```
 
@@ -148,9 +148,9 @@ echo($masterConfig->get('root-path'));
 Notably, if you think of the decorators / prefixed indexes as a hierarchy, you can actually access data higher up in the hierarchy by calling ->get and using ../ in front of an index you want. So, based on our previous example:
 
 ```
-echo($emailConfig->get('root-path','none found')); 
+echo($emailConfig->get('root-path','none found'));
  # this should echo 'none found'
-echo($emailConfig->get('../root-path','none found')); 
+echo($emailConfig->get('../root-path','none found'));
  # this should actually echo something like  /var/www/myproject!
 ```
 
@@ -161,7 +161,7 @@ You can also require the values in a particular index to implement one or more i
 ```php
 $app = new \Lucid\Component\Container\Container();
 $app->requireInterfacesForIndex('mailer', 'MailerInterface');
-$app->set('mailer', new MyMailer()); 
+$app->set('mailer', new MyMailer());
  # assuming your class MyMailer implements MyMailerInterface, this should work!
  # If it doesn't implement it, get ready to catch RequiredInterfaceException.
 
@@ -172,7 +172,7 @@ $app->set('mailer', 'totally a string, not an object');
 
 You can lock indexes to prevent accidental overwriting by using the ->lock($index) and ->unlock($index) methods. For example:
 
-```php 
+```php
 $app = new \Lucid\Component\Container\Container();
 $app->set('admin-username', 'admin');
 $app->lock('admin-username');
@@ -185,6 +185,26 @@ Note: basically nothing prevents an index from being unlocked, so if you're real
 ## DateTime parsing
 
 When trying to convert a value to a DateTime object, by default Container will call \DateTime::createFromFormat and try 3 different formats in order: \DateTime::ISO8601, \DateTime::W3C, 'U'. If any of those attempts does not fail, the result is returned. You can set which formats are tried by calling ->setDateTimeFormats(...$newFormats). Note that this replaces which formats are tested, it is NOT additive.
+
+## Using __call()
+
+Both Container and PrefixDecorator allow you to use __call to access indexes, but only for getting, not setting. For example:
+
+```php
+$app = new \Lucid\Component\Container\Container();
+$app->set('myindex', 'myvalue');
+echo($app->get('myindex'));
+ # echos 'myvalue', as expected
+echo($app->myindex());
+ # Also echos 'myvalue'
+```
+
+Note that while PHP methods are normally case-insensitive, since the method name is used to look up the index to return, in this situation the case really does matter. Given the example code above:
+
+```php
+echo($app->myIndex());
+ # Will NOT echo 'myvalue', since myIndex is not the same string as myindex.
+```
 
 ## Exception Classes
 
