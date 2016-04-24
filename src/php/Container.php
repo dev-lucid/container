@@ -169,4 +169,11 @@ class Container implements ContainerInterface
         }
         return $this;
     }
+
+    public function &__call($method, $parameters)
+    {
+        $defaultValue = $parameters[0] ?? null;
+        $value =& $this->get($method, $defaultValue);
+        return $value;
+    }
 }

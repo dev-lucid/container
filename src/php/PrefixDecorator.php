@@ -32,7 +32,7 @@ class PrefixDecorator
         return $this->container;
     }
 
-    public function __call(string $method, array $parameters)
+    public function &__call(string $method, array $parameters)
     {
         if (isset($this->methodsWithIdParameter[$method]) === false) {
 
@@ -44,15 +44,22 @@ class PrefixDecorator
             }
 
             # then look up the method's parametres
-            $ref = new \ReflectionMethod($actualContainer, $method);
-            $methodParameters = $ref->getParameters();
-
-            # if the method has more than one parameter and the name of the first parameter is on the list of parameter
-            # names that most likely need a prefix (id, name, index), then set to true
-            if (count($methodParameters) === 0) {
-                $this->methodsWithIdParameter[$method] = false;
+            if (method_exists($actualContainer, $method) === false) {
+                # attempting to call a method that doesn't exist on the container. Likely trying to use __call method of accessing
+                # indexes.
+                $result =& $this->get($method, $parameters[0] ?? null);
+                return $result;
             } else {
-                $this->methodsWithIdParameter[$method] = in_array($methodParameters[0]->name, $this->parameterNamesToPrefix);
+                $ref = new \ReflectionMethod($actualContainer, $method);
+                $methodParameters = $ref->getParameters();
+
+                # if the method has more than one parameter and the name of the first parameter is on the list of parameter
+                # names that most likely need a prefix (id, name, index), then set to true
+                if (count($methodParameters) === 0) {
+                    $this->methodsWithIdParameter[$method] = false;
+                } else {
+                    $this->methodsWithIdParameter[$method] = in_array($methodParameters[0]->name, $this->parameterNamesToPrefix);
+                }
             }
         }
 
@@ -62,7 +69,8 @@ class PrefixDecorator
         }
 
         # Call the method on our actual container, and move on.
-        return $this->container->$method(...$parameters);
+        $result = $this->container->$method(...$parameters);
+        return $result;
     }
 
     protected function buildFinalId(string $id) : string
