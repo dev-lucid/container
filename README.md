@@ -3,7 +3,7 @@
 A data container that implements the PSR-11 interface, plus a few extra features:
 
 * You can lock / unlock indexes
-* You can require indexes to implement interfaces
+* You can require indexes to implement interfaces (which also requires them to be objects)
 * You can store / retrieve arrays correctly
 * You can return DateTime objects and set which formats your container can try to convert from
 * You can decorate the container to allow an area of your code to use the same set/get API, but have the indexes be automatically prefixed inside one master container.
@@ -131,18 +131,18 @@ You *should* get something that looks like this:
 Importantly, anything that uses the $emailConfig version doesn't have to be aware of the email: prefix. For example:
 
 ```
-echo($emailConfig->get('smtp-host'));
+echo($emailConfig->string('smtp-host'));
  # This should echo smtp.gmail.com
-echo($emailConfig->get('root-path','none found'));
+echo($emailConfig->string('root-path','none found'));
  # this should echo 'none found'
 ```
 
 But, anything that uses the $masterConfig version *can* access indexes prefixed by the decorator:
 
 ```
-echo($masterConfig->get('email:smtp-host'));
+echo($masterConfig->string('email/smtp-host'));
  # This should echo smtp.gmail.com
-echo($masterConfig->get('root-path'));
+echo($masterConfig->string('root-path'));
  # this should echo something like  /var/www/myproject
 ```
 
@@ -150,9 +150,9 @@ echo($masterConfig->get('root-path'));
 Notably, if you think of the decorators / prefixed indexes as a hierarchy, you can actually access data higher up in the hierarchy by calling ->get and using ../ in front of an index you want. So, based on our previous example:
 
 ```
-echo($emailConfig->get('root-path','none found'));
+echo($emailConfig->string('root-path','none found'));
  # this should echo 'none found'
-echo($emailConfig->get('../root-path','none found'));
+echo($emailConfig->string('../root-path','none found'));
  # this should actually echo something like  /var/www/myproject!
 ```
 
@@ -167,7 +167,7 @@ $app->set('mailer', new MyMailer());
  # assuming your class MyMailer implements MailerInterface, this should work!
  # If it doesn't implement it, get ready to catch RequiredInterfaceException.
 
- # Now this should NOT work:
+ # Now this should NOT work as its not an object. get ready to catch RequiredInterfaceException.
 $app->set('mailer', 'totally a string, not an object');
 ```
 ## Locking Indexes
