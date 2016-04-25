@@ -6,16 +6,16 @@ interface ContainerInterface
     public function setSource(&$source);
 
     public function has(string $id);
-    public function get(string $id, $defaultValue);
+    public function get(string $id);
 
     public function delete(string $id);
-    public function set(string $id, $defaultValue);
+    public function set(string $id, $newValue);
 
-    public function string(string $id, $defaultValue);
-    public function int(string $id, $defaultValue);
-    public function float(string $id, $defaultValue);
-    public function bool(string $id, $defaultValue);
-    public function DateTime(string $id, $defaultValue);
+    public function string(string $id, string $defaultValue);
+    public function int(string $id, int $defaultValue);
+    public function float(string $id, float $defaultValue);
+    public function bool(string $id, bool $defaultValue);
+    public function DateTime(string $id, DateTime $defaultValue);
 
     public function getArray();
     public function setValues(array $array);

@@ -1,10 +1,11 @@
 <?php
 namespace Lucid\Component\Container;
 
-class PrefixDecorator
+class PrefixDecorator implements \ArrayAccess, \Iterator, \Countable
 {
     protected $prefix    = null;
     protected $container = null;
+    protected $iteratorTempArray = null;
 
     protected $methodsWithIdParameter = [
         'set'=>true,
@@ -83,9 +84,12 @@ class PrefixDecorator
         }
     }
 
-    public function &get(string $id, $defaultValue = null)
+    public function &get(string $id)
     {
-        $value =& $this->container->get($this->buildFinalId($id), $defaultValue = null);
+        if ($this->has($id) === false) {
+            throw new NotFoundException($id, array_keys($this->container->getArray()));
+        }
+        $value =& $this->container->get($this->buildFinalId($id));
         return $value;
     }
 
@@ -96,4 +100,69 @@ class PrefixDecorator
         }
         return $this;
     }
+
+    /* ArrayAccess methods: start */
+    public function offsetExists($id)
+    {
+        return $this->__call('has', [$id]);
+    }
+
+    public function &offsetGet($id)
+    {
+        $value =& $this->get($id);
+        return $value;
+    }
+
+    public function offsetSet($id, $newValue)
+    {
+        return $this->__call('set', [$id, $newValue]);
+    }
+
+    public function offsetUnset($id)
+    {
+        return $this->__call('delete', [$id]);
+    }
+    /* ArrayAccess methods: end */
+
+
+    protected function setupIteratorTempArray()
+    {
+        $this->iteratorTempArray = [];
+        foreach ($this->container as $id=>$value) {
+            if (strpos($id, $this->prefix) === 0) {
+                $this->iteratorTempArray[substr($id, strlen($this->prefix))] = $value;
+            }
+        }
+    }
+
+    /* Iterator methods: start */
+    function rewind() {
+        $this->setupIteratorTempArray();
+        reset($this->iteratorTempArray);
+    }
+
+    function current() {
+        return current($this->iteratorTempArray);
+    }
+
+    function key() {
+        return key($this->iteratorTempArray);
+    }
+
+    function next() {
+        next($this->iteratorTempArray);
+    }
+
+    function valid() {
+        return key($this->iteratorTempArray) !== null;
+    }
+    /* Iterator methods: end */
+
+    /* Countable methods: start */
+    function count()
+    {
+        $this->setupIteratorTempArray();
+        return count(array_keys($this->iteratorTempArray));
+    }
+    /* Countable methods: end */
 }

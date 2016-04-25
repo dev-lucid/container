@@ -21,9 +21,12 @@ class RequestContainer extends Container
         $this->boolFalseValues = $newValues;
     }
 
-    public function bool(string $id, $defaultValue = false) : bool
+    public function bool(string $id, bool $defaultValue = false) : bool
     {
-        $value = $this->get($id, $defaultValue);
+        if ($this->has($id) === false) {
+            return $defaultValue;
+        }
+        $value = $this->get($id);
 
         if (in_array($value, $this->boolTrueValues, true) === true) {
             return true;
@@ -32,6 +35,6 @@ class RequestContainer extends Container
         if (in_array($value, $this->boolFalseValues, true) === true) {
             return false;
         }
-        return $value;
+        throw new RequestInvalidBoolException($value, $this->boolTrueValues, $this->boolFalseValues);
     }
 }

@@ -16,6 +16,7 @@ class BoolTest extends \PHPUnit_Framework_TestCase
             'BoolTrue1'=>1,
             'BoolTrueString'=>'true',
             'BoolTrueYes'=>'yes',
+            'InvalidValue'=>'Yep',
         ];
         $container->setSource($array);
 
@@ -26,6 +27,8 @@ class BoolTest extends \PHPUnit_Framework_TestCase
         $this->assertTrue($container->bool('BoolTrueYes'));
 
         $this->assertFalse($container->bool('nullValue'));
+        $this->setExpectedException(Lucid\Component\Container\RequestInvalidBoolException::class);
+        $this->assertFalse($container->bool('InvalidValue'));
     }
 
     public function testBoolFalse()

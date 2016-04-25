@@ -7,6 +7,8 @@ A data container that implements the PSR-11 interface, plus a few extra features
 * You can store / retrieve arrays correctly
 * You can return DateTime objects and set which formats your container can try to convert from
 * You can decorate the container to allow an area of your code to use the same set/get API, but have the indexes be automatically prefixed inside one master container.
+* You can access indexes via __call. ->get will be called, and the method name will be used as the index to return
+* Container implements ArrayAccess, Iterator, and Countable
 
 I wrote this class for several purposes:
 
@@ -17,11 +19,11 @@ I wrote this class for several purposes:
 There are 6 functions for getting your data out:
 
 * ->get($id), which performs no type casting at all
-* ->string($id), which calls strval on the data first
-* ->int($id), which calls intval on the data first
-* ->float($id), which calls floatval on the data first
-* ->bool($id), which calls boolval on the data first
-* ->DateTime($id), which attemps to convert the data into a DateTime object
+* ->string(string $id, string $defaultValue), which calls strval on the data first
+* ->int($id, int $defaultValue), which calls intval on the data first
+* ->float($id float $defaultValue), which calls floatval on the data first
+* ->bool($id, bool $defaultValue), which calls boolval on the data first
+* ->DateTime($id, DateTime $defaultValue), which attemps to convert the data into a DateTime object
 
 Here's some examples of some basic functionality:
 
@@ -162,7 +164,7 @@ You can also require the values in a particular index to implement one or more i
 $app = new \Lucid\Component\Container\Container();
 $app->requireInterfacesForIndex('mailer', 'MailerInterface');
 $app->set('mailer', new MyMailer());
- # assuming your class MyMailer implements MyMailerInterface, this should work!
+ # assuming your class MyMailer implements MailerInterface, this should work!
  # If it doesn't implement it, get ready to catch RequiredInterfaceException.
 
  # Now this should NOT work:
@@ -206,11 +208,43 @@ echo($app->myIndex());
  # Will NOT echo 'myvalue', since myIndex is not the same string as myindex.
 ```
 
+## Iterating and counting
+
+Iterating using a foreach loop works like you'd expect, but there are a couple quirks related to using the PrefixDecorator class. Only indexes that have the prefix will be used for the loop or counted. 
+
+Example!
+
+```php
+$masterConfig = new \Lucid\Component\Container\Container();
+$emailConfig = new \Lucid\Component\Container\PrefixDecorator('email/', $masterConfig);
+
+$masterConfig->set('root-path', __DIR__);
+$emailConfig->set('smpt-host', 'smtp.gmail.com');
+
+echo('Count of $masterConfig: '.count($masterConfig));
+ # should echo 2
+echo('Count of $emailConfig: '.count($emailConfig));
+ # should echo 1, as only one of the indexes has the right prefix
+ 
+foreach ($masterConfig as $key=>$value) {
+	echo($key.': '.$value);
+}
+ # this should print out two keys: root-path and email/smtp-host
+
+foreach ($emailConfig as $key=>$value) {
+	echo($key.': '.$value);
+}
+ # this should print out only one key: smtp-host. 
+
+```
+
 ## Exception Classes
 
-4 Exception classes are provided:
+6 Exception classes are provided:
 
+* NotFoundException: thrown when ->get is called, but the index cannot be found in the container. Notably, this exception will NOT be thrown when using one of the scalar getters or ->DateTime, as those functions have a second parameter $defaultValue, which is returned if the index is not set.
 * DateTimeParseException: thrown when data cannot be parsed by \DateTime::createFromFormat
 * InvalidSourceException: thrown when ->setSource($newSource) is called, but the new source is not an array, nor an object that supports both the ArrayAccess and Traversable interfaces
 * LockedIndexEception: thrown when trying to set a locked index
 * RequiredInterfaceException: thrown when an index requires an object that implements one more more interfaces, and you attempt to set that index to an object that does not implement those interfaces
+* RequestInvalidBoolException: thrown only by the RequestContainer class when calling ->bool and the value in the index does not match either a valid true or valid false value. 
