@@ -81,6 +81,10 @@ The CookieContainer class functions identically to Container (which it extends),
 
 Internally, the cookie container calls set\_cookie rather than setting indexes of an array. Each of the setters is used to set the values passed to set_cookie's parameters.  Note that the value passed to setExpiresOffset will be added to now(). The default value is 2592000 (30 days).
 
+## SessionContainer
+
+The SessionContainer class extends Container and uses $_SESSION to to store its values rather than an internal array. It also calls session_start(). That's really the only difference.
+
 ## Storing Arrays
 
 Container will let you store / access arrays. So, this *should* work:
@@ -91,17 +95,6 @@ $container->set('myarray', []);
 $container->get('myarray')['testindex'] = 'testvalue';
 echo($container->get('myarray')['testindex']); # should echo 'testvalue'
 ```
-
-## Notes on using Container to store session data:
-In order to use this to store session data, you need to call the setSource
-method of Container and pass is $_SESSION by reference. You should also call session_start(); Here's a complete 3 line example:
-
-```php
-session_start();
-$container = new \Lucid\Component\Container\Container();
-$container->setSource(&$_SESSION);
-```
-Yep, that's about it.
 
 ## Using the PrefixDecorator class
 
