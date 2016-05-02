@@ -3,10 +3,22 @@ namespace Lucid\Component\Container;
 
 class Container implements ContainerInterface, \ArrayAccess, \Iterator, \Countable
 {
-    protected $source = [];
-    protected $dateTimeFormats = [\DateTime::ISO8601, \DateTime::W3C, 'U'];
+    protected $source             = [];
+    protected $dateTimeFormats    = [\DateTime::ISO8601, \DateTime::W3C, 'Y-m-d H:i', 'U'];
     protected $requiredInterfaces = [];
-    protected $locks = [];
+
+    protected $locks              = [];
+
+    protected $parent             = null;
+    protected $children           = [];
+
+    protected $constructors       = [];
+    protected $constructorParameters = [];
+    protected $lastConstructor    = null;
+
+    protected $prefixedConstructors = [];
+    protected $prefixedConstructorParameters = [];
+    protected $lastPrefixedConstructor    = null;
 
     public function __construct()
     {
@@ -21,6 +33,50 @@ class Container implements ContainerInterface, \ArrayAccess, \Iterator, \Countab
         if ($this->has($id) === true) {
             $this->checkRequiredInterfaces($id);
         }
+    }
+
+    public function addConstructor(string $id, string $className)
+    {
+        if (isset($this->source[$id]) === true) {
+            throw new Exception('can\'t set constructor, source already contains '.$id);
+        }
+
+        $this->constructorFixedParameters[$id] = [];
+        $this->constructorContainerParameters[$id] = [];
+        $this->constructors[$id] = $className;
+        $this->lastConstructor = $id;
+        $this->lastPrefixedConstructor = null;
+    }
+
+    public function addPrefixedConstructor(string $prefix, string $namespacePrefix)
+    {
+        $this->prefixedConstructorFixedParameters[$prefix] = [];
+        $this->prefixedConstructorContainerParameters[$prefix] = [];
+        $this->prefixedConstructors[$prefix] = $namespacePrefix;
+        $this->lastConstructor = null;
+        $this->lastPrefixedConstructor = $prefix;
+    }
+
+    public function addFixedParameter(string $label, $value, string $id = null)
+    {
+        $lastProperty  = (is_null($this->lastConstructor) === false)? 'lastConstructor':'lastPrefixedConstructor';
+        $paramProperty = (is_null($this->lastConstructor) === false)? 'constructorFixedParameters':'prefixedConstructorFixedParameters';
+        if (is_null($id) === true) {
+            $id = $this->$lastProperty;
+        }
+        $this->$paramProperty[$id][$label] = $value;
+        return $this;
+    }
+
+    public function addContainerParameter(string $label, $value, string $id = null)
+    {
+        $lastProperty  = (is_null($this->lastConstructor) === false)? 'lastConstructor':'lastPrefixedConstructor';
+        $paramProperty = (is_null($this->lastConstructor) === false)? 'constructorContainerParameters':'prefixedConstructorContainerParameters';
+        if (is_null($id) === true) {
+            $id = $this->$lastProperty;
+        }
+        $this->$paramProperty[$id][$label] = $value;
+        return $this;
     }
 
     protected function checkRequiredInterfaces(string $id)
@@ -67,8 +123,9 @@ class Container implements ContainerInterface, \ArrayAccess, \Iterator, \Countab
     {
         if (is_array($newSource) === true ) {
             $this->source =& $newSource;
-        } else if (is_object($newSource) === true) {
+        } elseif (is_object($newSource) === true) {
             $classImplements = class_implements($newSource);
+
             if (in_array('ArrayAccess', $classImplements) === false || in_array('Iterator', $classImplements) === false) {
                 throw new InvalidSourceException();
             }
@@ -82,16 +139,199 @@ class Container implements ContainerInterface, \ArrayAccess, \Iterator, \Countab
 
     public function has(string $id) : bool
     {
-        return isset($this->source[$id]);
+
+        $has = (isset($this->source[$id]) === true);
+
+
+        return $has;
+    }
+
+    public function hasConstructor(string $id) : bool
+    {
+
+        $has = (isset($this->constructors[$id]) === true);
+
+
+        return $has;
     }
 
     public function &get(string $id)
     {
+        if (is_null($this->parent) === false){
+            if ($this->parent->has($id) === true) {
+                return $this->parent->get($id);
+            }
+        }
+
         if ($this->has($id) === false) {
+            foreach ($this->children as $child) {
+                if ($child->has($id) === true) {
+                    return $child->get($id);
+                }
+            }
             throw new NotFoundException($id, array_keys($this->getArray()));
         }
+
         $value =& $this->source[$id];
         return $value;
+    }
+
+    public function hasParent()
+    {
+        return (is_null($this->parent) === false);
+    }
+
+    public function getParent()
+    {
+        return $this->parent;
+    }
+
+    public function findRootContainer()
+    {
+        $obj = $this;
+        while($obj->hasParent() === true) {
+            $obj = $obj->getParent();
+        }
+        return $obj;
+    }
+
+    public function findContainerForDelegateParameter(string $name, string $type, bool $isScalar)
+    {
+        if ($isScalar === false) {
+            # first, look through source for a matching class
+            foreach($this->source as $id => $value) {
+                if (is_object($value) === true && get_class($value) == $type) {
+                    return $this;
+                }
+            }
+
+            # if we didn't find a match, look through source for an object whose class implements $name as an interface
+            foreach($this->source as $id => $value) {
+                if (is_object($value) === true && in_array($type, class_implements($value)) === true) {
+                    return $this;
+                }
+            }
+
+            # first, check the constructors
+            foreach($this->constructors as $id => $class) {
+                if ($class == $type) {
+                    return $this;
+                }
+            }
+
+            # if we didn't find a match, look through constructors for a class that implements $name as an I18nInterface
+            foreach($this->constructors as $id => $class) {
+                $implements = class_implements($class);
+                if (in_array($type, $implements) === true) {
+                    return $this;
+                }
+            }
+        } elseif (isset($this->source[$name]) === true) {
+            return $this;
+        }
+
+        foreach ($this->children as $child) {
+            $gotIt = $child->findContainerForDelegateParameter($name, $type, $isScalar);
+            if ($gotIt !== false) {
+                return $gotIt;
+            }
+        }
+        return false;
+    }
+
+    public function buildDelegateParameter(string $name, string $type, bool $isScalar)
+    {
+        if ($isScalar === false) {
+            # first, look through source for an object with the same class
+            foreach($this->source as $id => $value) {
+                if (is_object($value) === true && get_class($value) == $type) {
+                    return $value;
+                }
+            }
+
+            # if we didn't find a match, look through source for an object whose class implements $name as an interface
+            foreach($this->source as $id => $value) {
+                if (is_object($value) === true && in_array($type, class_implements($value)) === true) {
+                    return $value;
+                }
+            }
+
+            # next, check the constructors
+            foreach($this->constructors as $id => $class) {
+                if ($class == $type) {
+                    return $this->construct($id);
+                }
+            }
+
+            # if we didn't find a match, look through constructors for a class that implements $name as an I18nInterface
+            foreach($this->constructors as $id => $class) {
+                $implements = class_implements($class);
+                if (in_array($type, $implements) === true) {
+                    return $this->construct($id);
+                }
+            }
+
+
+        } elseif (isset($this->source[$name]) === true) {
+            return $this->get($name);
+        }
+    }
+
+    public function construct($id)
+    {
+        $finalClass = null;
+        if (isset($this->constructors[$id]) === true) {
+            $finalClass = $this->constructors[$id];
+        } else {
+            foreach ($this->prefixedConstructors as $prefix=>$namespacePrefix) {
+                if (strpos($id, $prefix) === 0) {
+                    $finalClass = $namespacePrefix . substr($id, strlen($prefix));
+                }
+            }
+        }
+
+        if (is_null($finalClass) === true) {
+            throw new NotFoundException($id, array_keys($this->constructors));
+        } else {
+            $reflectionMethod = new \ReflectionMethod($finalClass, '__construct');
+            $reflectionParameters = $reflectionMethod->getParameters();
+            $parameters = [];
+            foreach ($reflectionParameters as $reflectionParameter) {
+                $found = false;
+                if (isset($this->constructorFixedParameters[$id][$reflectionParameter->getName()]) === true) {
+                    $parameters[$reflectionParameter->getPosition()] = $this->constructorFixedParameters[$id][$reflectionParameter->getName()];
+                    $found = true;
+                } else {
+                    $name     = $reflectionParameter->getName();
+                    $type     = $reflectionParameter->getType();
+                    $isScalar = $type->isBuiltin();
+
+                    if (isset($this->constructorContainerParameters[$id][$name]) === true) {
+                        $name = $this->constructorContainerParameters[$id][$name];
+                        $type = 'string';
+                        $isScalar = true;
+                    }
+
+                    $container = $this->findRootContainer()->findContainerForDelegateParameter($name, $type, $isScalar);
+
+                    if ($container !== false) {
+                        $parameters[$reflectionParameter->getPosition()] = $container->buildDelegateParameter($name, $type, $isScalar);
+                        $found = true;
+                    }
+                }
+
+                if ($found === false) {
+                    if ($reflectionParameter->isDefaultValueAvailable() === true) {
+                        $parameters[$reflectionParameter->getPosition()] = $reflectionParameter->getDefaultValue();
+                    } else {
+                        $parameters[$reflectionParameter->getPosition()] = null;
+                    }
+                }
+            }
+
+            $object = new $finalClass(...$parameters);
+            return $object;
+        }
     }
 
     public function delete(string $id)
@@ -190,8 +430,11 @@ class Container implements ContainerInterface, \ArrayAccess, \Iterator, \Countab
 
     public function &__call($method, $parameters)
     {
-        $defaultValue = $parameters[0] ?? null;
-        $value =& $this->get($method, $defaultValue);
+        if (isset($parameters[0])) {
+            $this->set($method, $parameters[0]);
+            return $this;
+        }
+        $value =& $this->get($method);
         return $value;
     }
 
@@ -246,4 +489,30 @@ class Container implements ContainerInterface, \ArrayAccess, \Iterator, \Countab
         return count(array_keys($this->getArray()));
     }
     /* Countable methods: end */
+
+    /* Delegate functions: start */
+    public function setAsChildContainerOf($parentContainer)
+    {
+        $this->setParentContainer($parentContainer);
+        $parentContainer->addChildContainer($this);
+        return $this;
+    }
+
+    public function setAsParentContainerOf($childContainer)
+    {
+        $this->addChildContainer($childContainer);
+        $childContainer->setParentContainer($this);
+        return $this;
+    }
+
+    public function setParentContainer($parentContainer)
+    {
+        $this->parent = $parentContainer;
+    }
+
+    public function addChildContainer($childContainer)
+    {
+        $this->children[] = $childContainer;
+    }
+    /* Delegate functions: end */
 }
