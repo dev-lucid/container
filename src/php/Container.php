@@ -12,16 +12,39 @@ class Container implements ContainerInterface, \ArrayAccess, \Iterator, \Countab
     protected $parent             = null;
     protected $children           = [];
 
-    protected $constructors       = [];
-    protected $constructorParameters = [];
-    protected $lastConstructor    = null;
-
-    protected $prefixedConstructors = [];
-    protected $prefixedConstructorParameters = [];
-    protected $lastPrefixedConstructor    = null;
+    protected $constructors = [];
 
     public function __construct()
     {
+    }
+    
+    public function registerConstructor(string $id, string $className, bool $isSingleton = false)
+    {
+        $this->constructors[$id] = [
+            'className'=>$className,
+            'isSingleton'=>$isSingleton,
+            'parameters'=>[],
+            'instantiationClosures' =>[],
+        ];
+        return $this;
+    }
+    
+    public function addParameter(string $id, string $type, string $name, string $value = null)
+    {
+        if ($type != 'container' && $type != 'fixed') {
+            throw new Exception('Container->addParameter parameter $type may only contain values \'container\' or \'fixed\'');
+        }
+        $this->constructors[$id]['parameters'][$name] = [
+            'type'=>$type,
+            'value'=>$value,
+        ];
+        return $this;
+    }
+    
+    public function addInstantiationClosure(string $id, callable $closure)
+    {
+        $this->constructors[$id]['instantiationClosures'][] = $closure;
+        return $this;
     }
 
     public function requireInterfacesForIndex(string $id, ...$interfaces)
@@ -33,50 +56,6 @@ class Container implements ContainerInterface, \ArrayAccess, \Iterator, \Countab
         if ($this->has($id) === true) {
             $this->checkRequiredInterfaces($id);
         }
-    }
-
-    public function addConstructor(string $id, string $className)
-    {
-        if (isset($this->source[$id]) === true) {
-            throw new Exception('can\'t set constructor, source already contains '.$id);
-        }
-
-        $this->constructorFixedParameters[$id] = [];
-        $this->constructorContainerParameters[$id] = [];
-        $this->constructors[$id] = $className;
-        $this->lastConstructor = $id;
-        $this->lastPrefixedConstructor = null;
-    }
-
-    public function addPrefixedConstructor(string $prefix, string $namespacePrefix)
-    {
-        $this->prefixedConstructorFixedParameters[$prefix] = [];
-        $this->prefixedConstructorContainerParameters[$prefix] = [];
-        $this->prefixedConstructors[$prefix] = $namespacePrefix;
-        $this->lastConstructor = null;
-        $this->lastPrefixedConstructor = $prefix;
-    }
-
-    public function addFixedParameter(string $label, $value, string $id = null)
-    {
-        $lastProperty  = (is_null($this->lastConstructor) === false)? 'lastConstructor':'lastPrefixedConstructor';
-        $paramProperty = (is_null($this->lastConstructor) === false)? 'constructorFixedParameters':'prefixedConstructorFixedParameters';
-        if (is_null($id) === true) {
-            $id = $this->$lastProperty;
-        }
-        $this->$paramProperty[$id][$label] = $value;
-        return $this;
-    }
-
-    public function addContainerParameter(string $label, $value, string $id = null)
-    {
-        $lastProperty  = (is_null($this->lastConstructor) === false)? 'lastConstructor':'lastPrefixedConstructor';
-        $paramProperty = (is_null($this->lastConstructor) === false)? 'constructorContainerParameters':'prefixedConstructorContainerParameters';
-        if (is_null($id) === true) {
-            $id = $this->$lastProperty;
-        }
-        $this->$paramProperty[$id][$label] = $value;
-        return $this;
     }
 
     protected function checkRequiredInterfaces(string $id)
@@ -146,11 +125,27 @@ class Container implements ContainerInterface, \ArrayAccess, \Iterator, \Countab
         return $has;
     }
 
-    public function hasConstructor(string $id) : bool
+    public function findConstructor(string $id)
     {
-
-        $has = (isset($this->constructors[$id]) === true);
-
+        $has = false;
+        
+        if (isset($this->constructors[$id]) === true) {
+            $has = $this->constructors[$id];
+        }
+      
+        if ($has === false) {
+            foreach ($this->constructors as $constructorId=>$constructor) {
+                if (strpos($id, $constructorId) === 0) {
+                    $this->constructors[$id] = [
+                        'className' => $constructor['className']. substr($id, strlen($constructorId)),
+                        'isSingleton' => &$constructor['isSingleton'],
+                        'parameters' => &$constructor['parameters'],
+                        'instantiationClosures' => &$constructor['instantiationClosures'],
+                    ];
+                    $has = $this->constructors[$id];
+                }
+            }
+        }
 
         return $has;
     }
@@ -168,6 +163,12 @@ class Container implements ContainerInterface, \ArrayAccess, \Iterator, \Countab
                 if ($child->has($id) === true) {
                     return $child->get($id);
                 }
+            }
+            
+            $constructor = $this->findConstructor($id);
+            if ($constructor !== false) {
+                $object = $this->construct($id, $constructor);
+                return $object;
             }
             throw new NotFoundException($id, array_keys($this->getArray()));
         }
@@ -195,8 +196,9 @@ class Container implements ContainerInterface, \ArrayAccess, \Iterator, \Countab
         return $obj;
     }
 
-    public function findContainerForDelegateParameter(string $name, string $type, bool $isScalar)
+    public function findContainerForDelegateParameter(string $name, string $type, bool $isScalar, string $scalarContainerId='')
     {
+        #echo("searching for delegate parameter: name=$name,type=$type,isScalar=$isScalar, scalarContainerId=$scalarContainerId\n");
         if ($isScalar === false) {
             # first, look through source for a matching class
             foreach($this->source as $id => $value) {
@@ -213,25 +215,30 @@ class Container implements ContainerInterface, \ArrayAccess, \Iterator, \Countab
             }
 
             # first, check the constructors
-            foreach($this->constructors as $id => $class) {
-                if ($class == $type) {
-                    return $this;
+            foreach($this->constructors as $id => $constructor) {
+                if (class_exists($constructor['className']) === true) {
+                    if ($constructor['className'] == $type) {
+                        return $this;
+                    }
                 }
             }
 
             # if we didn't find a match, look through constructors for a class that implements $name as an I18nInterface
-            foreach($this->constructors as $id => $class) {
-                $implements = class_implements($class);
-                if (in_array($type, $implements) === true) {
-                    return $this;
+            foreach($this->constructors as $id => $constructor) {
+                if (class_exists($constructor['className']) === true) {
+                    $implements = class_implements($constructor['className']);
+                    
+                    if (in_array($type, $implements) === true) {
+                        return $this;
+                    }
                 }
             }
-        } elseif (isset($this->source[$name]) === true) {
+        } elseif (isset($this->source[$scalarContainerId]) === true) {
             return $this;
         }
 
         foreach ($this->children as $child) {
-            $gotIt = $child->findContainerForDelegateParameter($name, $type, $isScalar);
+            $gotIt = $child->findContainerForDelegateParameter($name, $type, $isScalar, $scalarContainerId);
             if ($gotIt !== false) {
                 return $gotIt;
             }
@@ -239,7 +246,7 @@ class Container implements ContainerInterface, \ArrayAccess, \Iterator, \Countab
         return false;
     }
 
-    public function buildDelegateParameter(string $name, string $type, bool $isScalar)
+    public function buildDelegateParameter(string $name, string $type, bool $isScalar, string $scalarContainerId='')
     {
         if ($isScalar === false) {
             # first, look through source for an object with the same class
@@ -257,81 +264,96 @@ class Container implements ContainerInterface, \ArrayAccess, \Iterator, \Countab
             }
 
             # next, check the constructors
-            foreach($this->constructors as $id => $class) {
-                if ($class == $type) {
-                    return $this->construct($id);
+            foreach($this->constructors as $id => $constructor) {
+                if (class_exists($constructor['className']) === true) {
+                    if ($constructor['className'] == $type) {
+                        return $this->construct($id);
+                    }
                 }
             }
 
             # if we didn't find a match, look through constructors for a class that implements $name as an I18nInterface
-            foreach($this->constructors as $id => $class) {
-                $implements = class_implements($class);
-                if (in_array($type, $implements) === true) {
-                    return $this->construct($id);
+            foreach($this->constructors as $id => $constructor) {
+                if (class_exists($constructor['className']) === true) {
+                    $implements = class_implements($constructor['className']);
+                    if (in_array($type, $implements) === true) {
+                        return $this->construct($id);
+                    }
                 }
             }
 
 
-        } elseif (isset($this->source[$name]) === true) {
-            return $this->get($name);
+        } elseif (isset($this->source[$scalarContainerId]) === true) {
+            return $this->get($scalarContainerId);
         }
     }
 
-    public function construct($id)
+    public function construct(string $id, array $constructor=null)
     {
-        $finalClass = null;
-        if (isset($this->constructors[$id]) === true) {
-            $finalClass = $this->constructors[$id];
-        } else {
-            foreach ($this->prefixedConstructors as $prefix=>$namespacePrefix) {
-                if (strpos($id, $prefix) === 0) {
-                    $finalClass = $namespacePrefix . substr($id, strlen($prefix));
-                }
-            }
+        if (is_null($constructor) === true) {
+            $constructor = $this->findConstructor($id);
         }
 
-        if (is_null($finalClass) === true) {
+        if ($constructor === false) {
             throw new NotFoundException($id, array_keys($this->constructors));
-        } else {
-            $reflectionMethod = new \ReflectionMethod($finalClass, '__construct');
-            $reflectionParameters = $reflectionMethod->getParameters();
-            $parameters = [];
-            foreach ($reflectionParameters as $reflectionParameter) {
-                $found = false;
-                if (isset($this->constructorFixedParameters[$id][$reflectionParameter->getName()]) === true) {
-                    $parameters[$reflectionParameter->getPosition()] = $this->constructorFixedParameters[$id][$reflectionParameter->getName()];
+        }
+        
+        if ($constructor['isSingleton'] === true && isset($this->source[$id]) === true) {
+            return $this->source[$id];
+        }
+
+        $class = $constructor['className'];
+        $reflectionMethod = new \ReflectionMethod($class, '__construct');
+        $reflectionParameters = $reflectionMethod->getParameters();
+        $parameters = [];
+        foreach ($reflectionParameters as $reflectionParameter) {
+            $found = false;
+            
+            $name     = $reflectionParameter->getName();
+            $type     = $reflectionParameter->getType();
+            $isScalar = $type->isBuiltin();
+
+            if (isset($constructor['parameters'][$name]) === true) {
+                if ($constructor['parameters'][$name]['type'] == 'fixed') {
+                    $parameters[$reflectionParameter->getPosition()] = $constructor['parameters'][$name]['value'];
                     $found = true;
-                } else {
-                    $name     = $reflectionParameter->getName();
-                    $type     = $reflectionParameter->getType();
-                    $isScalar = $type->isBuiltin();
-
-                    if (isset($this->constructorContainerParameters[$id][$name]) === true) {
-                        $name = $this->constructorContainerParameters[$id][$name];
-                        $type = 'string';
-                        $isScalar = true;
-                    }
-
-                    $container = $this->findRootContainer()->findContainerForDelegateParameter($name, $type, $isScalar);
-
+                } elseif ($constructor['parameters'][$name]['type'] == 'container') { 
+                    $scalarContainerId = $constructor['parameters'][$name]['value'];
+                    $container = $this->findRootContainer()->findContainerForDelegateParameter($name, $type, $isScalar, $scalarContainerId);
                     if ($container !== false) {
-                        $parameters[$reflectionParameter->getPosition()] = $container->buildDelegateParameter($name, $type, $isScalar);
+                        $parameters[$reflectionParameter->getPosition()] = $container->buildDelegateParameter($name, $type, $isScalar, $scalarContainerId);
                         $found = true;
                     }
                 }
-
-                if ($found === false) {
-                    if ($reflectionParameter->isDefaultValueAvailable() === true) {
-                        $parameters[$reflectionParameter->getPosition()] = $reflectionParameter->getDefaultValue();
-                    } else {
-                        $parameters[$reflectionParameter->getPosition()] = null;
-                    }
+            } else {
+                $container = $this->findRootContainer()->findContainerForDelegateParameter($name, $type, $isScalar);
+                if ($container !== false) {
+                    $parameters[$reflectionParameter->getPosition()] = $container->buildDelegateParameter($name, $type, $isScalar);
+                    $found = true;
                 }
             }
-
-            $object = new $finalClass(...$parameters);
-            return $object;
+            
+            if ($found === false) {
+                if ($reflectionParameter->isDefaultValueAvailable() === true) {
+                    $parameters[$reflectionParameter->getPosition()] = $reflectionParameter->getDefaultValue();
+                } else {
+                    $parameters[$reflectionParameter->getPosition()] = null;
+                }
+            }
         }
+        
+        #echo('ready to construct '.$id.', parameters=='.print_r($parameters, true)."\n");
+        
+        $object = new $class(...$parameters);
+        foreach ($constructor['instantiationClosures'] as $closure) {
+            $closure($object, $this);
+        }
+        
+        if ($constructor['isSingleton'] === true) {
+            $this->source[$id] = $object;
+        }
+
+        return $object;
     }
 
     public function delete(string $id)

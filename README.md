@@ -1,24 +1,29 @@
 # Container
 
-A data container that implements the PSR-11 interface, plus a few extra features:
+A data container that implements the PSR-11 interface, plus quite a few extra features:
 
-* You can lock / unlock indexes
-* You can require indexes to implement interfaces (which also requires them to be objects)
+* You can lock / unlock indexes. Locking an index makes it read-only, until unlocked
+* You can require indexes to implement interfaces (which also requires them to be objects). Attempting to set an index to any value that is not an object that implements the required interface will throw an exception
 * You can store / retrieve arrays correctly
 * You can return DateTime objects and set which formats your container can try to convert from
-* You can decorate the container to allow an area of your code to use the same set/get API, but have the indexes be automatically prefixed inside one master container.
 * You can access indexes via __call. ->get will be called, and the method name will be used as the index to return
+* You can register constructors instead of instances, and use the container to instantiate new objects. Parameters for the class's __construct function can be assigned in a number of ways, such as:
+   * using fixed values (ex: always pass smtp.gmail.com to parameter named '$smtp_host')
+   * using container values (ex: look in the container for an index named 'smtp-host' when a constructor has a parameter named '$smtp_host')
+* Supports Delegate functionality proposed by the container interop: https://github.com/container-interop/container-interop/blob/master/docs/Delegate-lookup.md  
+* A related class is included in this project (PrefixDecorator) that can decorate an existing container so as to allow an area of your code to use the same set/get API, but have the indexes be automatically prefixed inside one master container.
 * Container implements ArrayAccess, Iterator, and Countable
 
 I wrote this class for several purposes:
 
 * To act as a front end to $\_COOKIE, $\_SESSION, $\_REQUEST, and a config array while providing a consistent API for retrieving indexes as particular types
 * To ease writing unit tests that were previously using $\_COOKIE, $\_SESSION, $\_REQUEST, etc so that they could use a mocked up container that was stored in the same location instead and use the same API.
+* As a way of exploring framework approaches using a pure view of containers as  dependency injectors versus service locators (I think this container could function as either).
 
 
 There are 6 functions for getting your data out:
 
-* ->get($id), which performs no type casting at all
+* ->get($id), which performs no type casting at all. This is based on PSR-11's ContainerInterface (https://github.com/container-interop/container-interop/blob/master/docs/ContainerInterface.md)
 * ->string(string $id, string $defaultValue), which calls strval on the data first
 * ->int($id, int $defaultValue), which calls intval on the data first
 * ->float($id float $defaultValue), which calls floatval on the data first
@@ -230,6 +235,29 @@ foreach ($emailConfig as $key=>$value) {
  # this should print out only one key: smtp-host. 
 
 ```
+
+## Using a container to construct objects 
+
+
+
+## Delegate containers
+
+This functionality is based on the DelegateInterface portion of the container interop project, which is documented here: https://github.com/container-interop/container-interop/blob/master/docs/Delegate-lookup-meta.md
+
+This functionality is implemented using two functions: 
+* ->setAsParentContainerOf($container)
+* ->setAsChildContainerOf($container)
+
+You can create the relationship between the parent (or composite) container and the child from either the parent or the child by calling the appropriate function, and you do not need to call both functions. In this implementation, creating a delegate relationship between two containers only affects using a container to construct an object and locating parameter values for the object's constructor. In this case, any container in the hierarchy will first find the root container, and from the root container search for a suitable value for the constructor's parameter. A value may be a match by being one of the following (in order):
+
+* The parameter's type is scalar, and the container contains an index with the same name as the parameter.
+* The parameter's type is an object, and the container contains one of the following:
+   * An instantiated object whose class is the same as the type of the parameter
+   * An instantiated object that implements an interface that is the same type as the parameter
+   * A definition on how to construct an object whose class *would* be the same as the type of the parameter (in which case, a new object will be instantiated and used as the constructor's parameter)
+   * A definition on how to construct an object whose class implements an interface that is the same type as the parameter  (in which case, a new object will be instantiated and used as the constructor's parameter)
+
+
 
 ## Exception Classes
 

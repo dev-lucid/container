@@ -11,6 +11,7 @@ interface ContainerInterface
     public function delete(string $id);
     public function set(string $id, $newValue);
 
+    public function construct(string $id);
     public function string(string $id, string $defaultValue);
     public function int(string $id, int $defaultValue);
     public function float(string $id, float $defaultValue);

@@ -10,6 +10,7 @@ class PrefixDecorator implements \ArrayAccess, \Iterator, \Countable
     protected $methodsWithIdParameter = [
         'set'=>true,
         'has'=>true,
+        'construct'=>true,
         'bool'=>true,
         'int'=>true,
         'float'=>true,
