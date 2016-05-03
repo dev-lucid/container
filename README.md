@@ -358,6 +358,42 @@ You can create the relationship between the parent (or composite) container and 
    * A registered constructor for a class that is the same type as the parameter (in which case, a new object will be instantiated and used as the constructor's parameter)
    * A registered constructor for a class that implements an interface that is the same type as the parameter  (in which case, a new object will be instantiated and used as the constructor's parameter)
 
+## Executing Methods (now with Dependency Injection!)
+
+This class also provides a way to instantiate an object and immediately call a method and handling dependency injection via reflection for both the constructor and the method called. This is done via ->execute(string $id, string $method). 
+
+Example:
+
+```php
+class MyLogger implements \PSR\Logger\LoggerInterface
+{
+}
+
+class MyClass
+{
+	public function myMethod(\PSR\Logger\LoggerInterface $logger)
+	{
+		$logger->debug('logging something here');
+		return 'hi';
+	}
+}
+
+$container = new \Lucid\Component\Container\Container();
+$container->registerConstructor('logger', 'MyLogger');
+$container->registerConstructor('myclass', 'MyClass');
+
+echo($container->execute('myclass', 'myMethod')); # should echo 'hi'
+```
+
+In this example, the container will instantiate MyClass, and then use reflection to look at myMethod and determine its parameters. Notably parameters can be matched in 3 different ways:
+
+* By name (in which case $logger matches in the index 'logger'), 
+* By class
+* By interface
+
+Both name and interface would've worked here.
+
+
 
 ## Exception Classes
 

@@ -98,6 +98,8 @@ trait ConstructionTrait
             }
         } elseif (isset($this->source[$scalarContainerId]) === true) {
             return $this;
+        } elseif (isset($this->source[$name]) === true) {
+            return $this;
         }
 
         foreach ($this->children as $child) {
@@ -148,7 +150,53 @@ trait ConstructionTrait
 
         } elseif (isset($this->source[$scalarContainerId]) === true) {
             return $this->get($scalarContainerId);
+        } elseif (isset($this->source[$name]) === true) {
+            return $this->get($name);
         }
+    }
+    
+    public function buildInjectableParameters(array $reflectionParameters, array $configuredParameters) : array
+    {
+        $parameters = [];
+        foreach ($reflectionParameters as $reflectionParameter) {
+            $found = false;
+
+            $name     = $reflectionParameter->getName();
+            $type     = $reflectionParameter->getType();
+            $isScalar = $type->isBuiltin();
+
+            if (isset($configuredParameters[$name]) === true) {
+                if ($configuredParameters[$name]['type'] == 'fixed') {
+                    $parameters[$reflectionParameter->getPosition()] = $configuredParameters[$name]['value'];
+                    $found = true;
+                } elseif ($configuredParameters[$name]['type'] == 'container') {
+                    $scalarContainerId = $configuredParameters[$name]['value'];
+                    $container = $this->findRootContainer()->findContainerForDelegateParameter($name, $type, $isScalar, $scalarContainerId);
+                    if ($container !== false) {
+                        $parameters[$reflectionParameter->getPosition()] = $container->buildDelegateParameter($name, $type, $isScalar, $scalarContainerId);
+                        $found = true;
+                    }
+                }
+            } else {
+        
+                #echo("trying to find a container for parameter, name=$name, type=$type, isScalar=$isScalar\n");
+                $container = $this->findRootContainer()->findContainerForDelegateParameter($name, $type, $isScalar);
+                if ($container !== false) {
+                    #echo("Found a container for parameter, name=$name, type=$type, isScalar=$isScalar\n");
+                    $parameters[$reflectionParameter->getPosition()] = $container->buildDelegateParameter($name, $type, $isScalar);
+                    $found = true;
+                }
+            }
+
+            if ($found === false) {
+                if ($reflectionParameter->isDefaultValueAvailable() === true) {
+                    $parameters[$reflectionParameter->getPosition()] = $reflectionParameter->getDefaultValue();
+                } else {
+                    $parameters[$reflectionParameter->getPosition()] = null;
+                }
+            }
+        }
+        return $parameters;
     }
 
     public function construct(string $id, array $constructor=null)
@@ -166,48 +214,11 @@ trait ConstructionTrait
         }
 
         $class      = $constructor['className'];
-        $parameters = [];
-
-        $reflectionMethod     = new \ReflectionMethod($class, '__construct');
-        $reflectionParameters = $reflectionMethod->getParameters();
-
-        foreach ($reflectionParameters as $reflectionParameter) {
-            $found = false;
-
-            $name     = $reflectionParameter->getName();
-            $type     = $reflectionParameter->getType();
-            $isScalar = $type->isBuiltin();
-
-            if (isset($constructor['parameters'][$name]) === true) {
-                if ($constructor['parameters'][$name]['type'] == 'fixed') {
-                    $parameters[$reflectionParameter->getPosition()] = $constructor['parameters'][$name]['value'];
-                    $found = true;
-                } elseif ($constructor['parameters'][$name]['type'] == 'container') {
-                    $scalarContainerId = $constructor['parameters'][$name]['value'];
-                    $container = $this->findRootContainer()->findContainerForDelegateParameter($name, $type, $isScalar, $scalarContainerId);
-                    if ($container !== false) {
-                        $parameters[$reflectionParameter->getPosition()] = $container->buildDelegateParameter($name, $type, $isScalar, $scalarContainerId);
-                        $found = true;
-                    }
-                }
-            } else {
-                $container = $this->findRootContainer()->findContainerForDelegateParameter($name, $type, $isScalar);
-                if ($container !== false) {
-                    $parameters[$reflectionParameter->getPosition()] = $container->buildDelegateParameter($name, $type, $isScalar);
-                    $found = true;
-                }
-            }
-
-            if ($found === false) {
-                if ($reflectionParameter->isDefaultValueAvailable() === true) {
-                    $parameters[$reflectionParameter->getPosition()] = $reflectionParameter->getDefaultValue();
-                } else {
-                    $parameters[$reflectionParameter->getPosition()] = null;
-                }
-            }
+        if (method_exists($class, '__construct') === true) {
+            $parameters = $this->buildInjectableParameters((new \ReflectionMethod($class, '__construct'))->getParameters(), $constructor['parameters']);
+        } else {
+            $parameters = [];
         }
-
-        #echo('ready to construct '.$id.', parameters=='.print_r($parameters, true)."\n");
 
         $object = new $class(...$parameters);
         foreach ($constructor['instantiationClosures'] as $closure) {
@@ -219,5 +230,17 @@ trait ConstructionTrait
         }
 
         return $object;
+    }
+    
+    public function execute(string $id, string $method) 
+    {
+        $object = $this->get($id);
+        if (is_object($object) === false) {
+            throw new \Exception("Tried to execute a method on container index $id, but that index did not contain an object or a constructor");
+        }
+        
+        $parameters = $this->buildInjectableParameters((new \ReflectionMethod($object, $method))->getParameters(), []);
+        
+        return $object->$method(...$parameters);
     }
 }
