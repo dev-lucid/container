@@ -1,18 +1,18 @@
-<?php 
+<?php
 namespace Lucid\Component\Container;
 
 trait ConstructionTrait
 {
     protected $constructors = [];
-    
+
     public function findConstructor(string $id)
     {
         $has = false;
-        
+
         if (isset($this->constructors[$id]) === true) {
             $has = $this->constructors[$id];
         }
-      
+
         if ($has === false) {
             foreach ($this->constructors as $constructorId=>$constructor) {
                 if (strpos($id, $constructorId) === 0) {
@@ -29,7 +29,7 @@ trait ConstructionTrait
 
         return $has;
     }
-    
+
     public function registerConstructor(string $id, string $className, bool $isSingleton = false)
     {
         $this->constructors[$id] = [
@@ -40,11 +40,11 @@ trait ConstructionTrait
         ];
         return $this;
     }
-    
+
     public function addParameter(string $id, string $type, string $name, string $value = null)
     {
         if ($type != 'container' && $type != 'fixed') {
-            throw new Exception('Container->addParameter parameter $type may only contain values \'container\' or \'fixed\'');
+            throw new \Exception('Container->addParameter parameter $type may only contain values \'container\' or \'fixed\'');
         }
         $this->constructors[$id]['parameters'][$name] = [
             'type'=>$type,
@@ -52,13 +52,13 @@ trait ConstructionTrait
         ];
         return $this;
     }
-    
+
     public function addInstantiationClosure(string $id, callable $closure)
     {
         $this->constructors[$id]['instantiationClosures'][] = $closure;
         return $this;
     }
-    
+
     public function findContainerForDelegateParameter(string $name, string $type, bool $isScalar, string $scalarContainerId='')
     {
         #echo("searching for delegate parameter: name=$name,type=$type,isScalar=$isScalar, scalarContainerId=$scalarContainerId\n");
@@ -90,7 +90,7 @@ trait ConstructionTrait
             foreach($this->constructors as $id => $constructor) {
                 if (class_exists($constructor['className']) === true) {
                     $implements = class_implements($constructor['className']);
-                    
+
                     if (in_array($type, $implements) === true) {
                         return $this;
                     }
@@ -160,20 +160,20 @@ trait ConstructionTrait
         if ($constructor === false) {
             throw new NotFoundException($id, array_keys($this->constructors));
         }
-        
+
         if ($constructor['isSingleton'] === true && isset($this->source[$id]) === true) {
             return $this->source[$id];
         }
 
         $class      = $constructor['className'];
-        $parameters = []; 
-        
+        $parameters = [];
+
         $reflectionMethod     = new \ReflectionMethod($class, '__construct');
         $reflectionParameters = $reflectionMethod->getParameters();
-        
+
         foreach ($reflectionParameters as $reflectionParameter) {
             $found = false;
-            
+
             $name     = $reflectionParameter->getName();
             $type     = $reflectionParameter->getType();
             $isScalar = $type->isBuiltin();
@@ -182,7 +182,7 @@ trait ConstructionTrait
                 if ($constructor['parameters'][$name]['type'] == 'fixed') {
                     $parameters[$reflectionParameter->getPosition()] = $constructor['parameters'][$name]['value'];
                     $found = true;
-                } elseif ($constructor['parameters'][$name]['type'] == 'container') { 
+                } elseif ($constructor['parameters'][$name]['type'] == 'container') {
                     $scalarContainerId = $constructor['parameters'][$name]['value'];
                     $container = $this->findRootContainer()->findContainerForDelegateParameter($name, $type, $isScalar, $scalarContainerId);
                     if ($container !== false) {
@@ -197,7 +197,7 @@ trait ConstructionTrait
                     $found = true;
                 }
             }
-            
+
             if ($found === false) {
                 if ($reflectionParameter->isDefaultValueAvailable() === true) {
                     $parameters[$reflectionParameter->getPosition()] = $reflectionParameter->getDefaultValue();
@@ -206,14 +206,14 @@ trait ConstructionTrait
                 }
             }
         }
-        
+
         #echo('ready to construct '.$id.', parameters=='.print_r($parameters, true)."\n");
-        
+
         $object = new $class(...$parameters);
         foreach ($constructor['instantiationClosures'] as $closure) {
             $closure($object, $this);
         }
-        
+
         if ($constructor['isSingleton'] === true) {
             $this->source[$id] = $object;
         }
