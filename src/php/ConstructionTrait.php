@@ -165,10 +165,12 @@ trait ConstructionTrait
             return $this->source[$id];
         }
 
-        $class = $constructor['className'];
-        $reflectionMethod = new \ReflectionMethod($class, '__construct');
+        $class      = $constructor['className'];
+        $parameters = []; 
+        
+        $reflectionMethod     = new \ReflectionMethod($class, '__construct');
         $reflectionParameters = $reflectionMethod->getParameters();
-        $parameters = [];
+        
         foreach ($reflectionParameters as $reflectionParameter) {
             $found = false;
             

@@ -199,7 +199,7 @@ class Container implements ContainerInterface, \ArrayAccess, \Iterator, \Countab
 
     public function &__call($method, $parameters)
     {
-        if (isset($parameters[0])) {
+        if (isset($parameters[0]) === true) {
             $this->set($method, $parameters[0]);
             return $this;
         }

@@ -240,7 +240,109 @@ foreach ($emailConfig as $key=>$value) {
 
 ## Using a container to construct objects 
 
+In order to use a container to construct a class, you must register class using the ->registerConstructor(string $id, string $className, bool $isSingleton = false) method. Once registered, you can instantiate the class using either ->construct($id), or ->get($id). If when registering the constructor, you pass True for the $isSingleton parameter, then an object is only instantiated the first time you call ->construct($id) or ->get($id), and that instance is stored in the container. Future calls to ->construct($id) or ->get($id) will return the original instance.
 
+### __construct parameters
+
+The values passed as parameters to a class's __construct function may be set by using the ->addParameter(string $id, string $type, string $name, $value=null) function. The $type parameter may have two values:
+
+* 'fixed', in which case a parameter with the same variable name as $name will be passed whatever is in $value. 
+* 'container', in which case the value for a parameter with the same variable name as $name will be passed whatever is returned by calling ->get() on the container, and $value will be used for the index to retrieve.
+
+Here's an example:
+
+```php
+
+class MyClass
+{
+	public function __construct(string $property1, string $property2)
+	{
+		$this->property1 = $property1;
+		$this->property2 = $property2;
+	}
+}
+
+$container = new \Lucid\Component\Container\Container();
+$container->registerConstructor('myclass', 'MyClass');
+$container->addParameter('myclass', 'fixed', 'property1', 'Value for property 1');
+$container->addParameter('myclass', 'container', 'property2', 'property2value');
+$container->set('property2value', 'Value for property2');
+
+$object = $container->get('myclass');
+echo($object->property1); # this should echo 'Value for property 1'
+echo($object->property2); # this should echo 'Value for property 2'
+```
+
+### Constructor Dependency Injection
+
+During construction, the container does try to do a bit of autowiring for any parameters whose value was not explicitly set via ->addParameter. By default, if the parameter's type is scalar and the container has a value with the same index as the parameter's name, the container's value at that index will be used.
+
+If the parameter is NOT scalar, the container will attempt to match an index inside itself based on class name or interface name. Notably, it will also check any registered constructors to see what classes they will create and what interfaces those classes support. If necessary, an object will be instantiated.
+
+This has a number of pluses and minuses:
+
+* Plus: In theory, this can perform all of your dependency injection automatically for you as long as you propertly define the right classes for all of your constructor's parameters.
+* Minus: Much of the work is hidden away, and it may be difficult for you to debug where a particular dependency came from
+* Minus: Because you can in theory set multiple indexes to different objects that all support the same interfaces or are from the same class, you can't guarantee that a particular one will be used to resolve a constructor parameter dependency. 
+
+Here's an example of this functionality working in practice using a logger:
+
+```php
+
+class MyLogger implements \PSR\Logger\LoggerInterface
+{
+	/* Please just pretend this is a complete psr-3 logger*/
+	public function debug(string $message)
+	{
+		echo($message);
+	}
+}
+
+class MyClass
+{
+	public function __construct(\PSR\Logger\LoggerInterface $logger)
+	{
+		$this->logger = $logger;
+	}
+}
+
+$container = new \Lucid\Component\Container\Container();
+$container->registerConstructor('mylogger', 'MyLogger', true);
+$container->registerConstructor('myclass', 'MyClass');
+$myclass = $container->get('myclass');
+$myclass->logger->debug('hi'); # should echo hi'
+```
+
+So in this example, when the container prepares to instantiate MyClass, it sees that its __construct method has a parameter requiring the interface \PSR\Logger\LoggerInterface. The container looks through existing indices and constructors, and finds that MyLogger implements the necessary interface. MyLogger is instantiated, and passed to the new instance of MyClass via its __construct parameter. 
+
+
+
+### Setter Dependency Injection
+
+You can use Container to implement setter injection as well, though it's a more manual process than using constructor injection. Container provides the method ->    ->addInstantiationClosure(string $id, callable $closure), which allows you to perform actions on an object before it is returned from ->get() or ->construct. In this closure, you can call as many setters as you want. Here's an example:
+
+```php
+
+
+```php
+
+class MyMailer
+{
+	public function setSmtpHost($newHost) 
+	{
+		$this->host = $newHost;
+	}
+}
+
+
+$container = new \Lucid\Component\Container\Container();
+$container->registerConstructor('mailer', 'MyMailer');
+$container->addInstantiationClosure('mailer', function($object, $container) {
+	$object->setSmtpHost('smtp.gmail.com');
+});
+```
+
+In this example, whenever ->get('mailer') is called, a new class of MyMailer will be instantiated and the closure will be called, which in turn calls the new object's ->setSmtpHost function. Voila, setter injection.
 
 ## Delegate containers
 
