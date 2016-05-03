@@ -10,7 +10,7 @@ A data container that implements the PSR-11 interface, plus quite a few extra fe
 * You can register constructors instead of instances, and use the container to instantiate new objects. Parameters for the class's __construct function can be assigned in a number of ways, such as:
    * using fixed values (ex: always pass smtp.gmail.com to parameter named '$smtp_host')
    * using container values (ex: look in the container for an index named 'smtp-host' when a constructor has a parameter named '$smtp_host')
-* Supports Delegate functionality proposed by the container interop: https://github.com/container-interop/container-interop/blob/master/docs/Delegate-lookup.md  
+* Supports Delegate functionality proposed by the container interop: https://github.com/container-interop/container-interop/blob/master/docs/Delegate-lookup-meta.md  
 * A related class is included in this project (PrefixDecorator) that can decorate an existing container so as to allow an area of your code to use the same set/get API, but have the indexes be automatically prefixed inside one master container.
 * Container implements ArrayAccess, Iterator, and Countable
 
@@ -21,14 +21,15 @@ I wrote this class for several purposes:
 * As a way of exploring framework approaches using a pure view of containers as  dependency injectors versus service locators (I think this container could function as either).
 
 
-There are 6 functions for getting your data out:
+There are 7 functions for getting your data out:
 
 * ->get($id), which performs no type casting at all. This is based on PSR-11's ContainerInterface (https://github.com/container-interop/container-interop/blob/master/docs/ContainerInterface.md)
 * ->string(string $id, string $defaultValue), which calls strval on the data first
 * ->int($id, int $defaultValue), which calls intval on the data first
 * ->float($id float $defaultValue), which calls floatval on the data first
 * ->bool($id, bool $defaultValue), which calls boolval on the data first
-* ->DateTime($id, DateTime $defaultValue), which attemps to convert the data into a DateTime object
+* ->DateTime($id, DateTime $defaultValue), which attempts to convert the data into a DateTime object
+* ->construct($id), which constructs a new object. Note that this does NOT get a value that has been set via ->set (caveat: technically you could register a constructor as a singleton, then set the index where that class *would* be stored if it were constructed).
 
 Here's some examples of some basic functionality:
 
@@ -235,6 +236,7 @@ foreach ($emailConfig as $key=>$value) {
  # this should print out only one key: smtp-host. 
 
 ```
+# Advanced Stuffs
 
 ## Using a container to construct objects 
 
@@ -254,9 +256,8 @@ You can create the relationship between the parent (or composite) container and 
 * The parameter's type is an object, and the container contains one of the following:
    * An instantiated object whose class is the same as the type of the parameter
    * An instantiated object that implements an interface that is the same type as the parameter
-   * A definition on how to construct an object whose class *would* be the same as the type of the parameter (in which case, a new object will be instantiated and used as the constructor's parameter)
-   * A definition on how to construct an object whose class implements an interface that is the same type as the parameter  (in which case, a new object will be instantiated and used as the constructor's parameter)
-
+   * A registered constructor for a class that is the same type as the parameter (in which case, a new object will be instantiated and used as the constructor's parameter)
+   * A registered constructor for a class that implements an interface that is the same type as the parameter  (in which case, a new object will be instantiated and used as the constructor's parameter)
 
 
 ## Exception Classes
