@@ -323,9 +323,6 @@ You can use Container to implement setter injection as well, though it's a more 
 
 ```php
 
-
-```php
-
 class MyMailer
 {
 	public function setSmtpHost($newHost) 
