@@ -65,6 +65,7 @@ trait ConstructionTrait
          * 
          * Exact match in ->source by name, and type is scalar OR the object in ->source is the same class as $type / same interface as $type
          * Exact match in ->source by scalarContainerId, and type is scalar OR the object in ->source is the same class as $type / same interface as $type
+         * Exact match in ->constructors by name, and class name is same class as $type / same interface as $type
          * Match by class in source
          * Match by Interface in source
          * Match by class in constructors
@@ -98,6 +99,15 @@ trait ConstructionTrait
                         return $this;
                     }
                 }
+            }
+        }
+        
+        if ($isScalar === false && isset($this->constructors[$name]) === true) {
+            if ($this->constructors[$name]['className'] == $type) {
+                return $this;
+            }
+            if (in_array($type, class_implements($this->constructors[$name]['className'])) === true) {
+                return $this;
             }
         }
         
@@ -143,6 +153,7 @@ trait ConstructionTrait
          * 
          * Exact match in ->source by name, and type is scalar OR the object in ->source is the same class as $type / same interface as $type
          * Exact match in ->source by scalarContainerId, and type is scalar OR the object in ->source is the same class as $type / same interface as $type
+         * Exact match in ->constructors by name, and class name is same class as $type / same interface as $type
          * Match by class in source
          * Match by Interface in source
          * Match by class in constructors
@@ -176,6 +187,15 @@ trait ConstructionTrait
                         return $this->source[$scalarContainerId];
                     }
                 }
+            }
+        }
+        
+        if ($isScalar === false && isset($this->constructors[$name]) === true) {
+            if ($this->constructors[$name]['className'] == $type) {
+                return $this->construct($name);
+            }
+            if (in_array($type, class_implements($this->constructors[$name]['className'])) === true) {
+                return $this->construct($name);
             }
         }
         
