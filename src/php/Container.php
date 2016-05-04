@@ -1,7 +1,7 @@
 <?php
 namespace Lucid\Component\Container;
 
-class Container implements ContainerInterface, \ArrayAccess, \Iterator, \Countable
+class Container implements ContainerInterface, InjectorFactoryInterface, \ArrayAccess, \Iterator, \Countable
 {
     use LockableTrait, ConstructionTrait, DelegateTrait, ArrayIteratorCountableTrait;
     
@@ -199,11 +199,11 @@ class Container implements ContainerInterface, \ArrayAccess, \Iterator, \Countab
 
     public function &__call($method, $parameters)
     {
-        if (isset($parameters[0]) === true) {
-            $this->set($method, $parameters[0]);
-            return $this;
-        }
         $value =& $this->get($method);
+        if (is_callable($value) === true) {
+            $return = $value(...$parameters);
+            return $return;
+        }
         return $value;
     }
 }
