@@ -61,46 +61,72 @@ trait ConstructionTrait
 
     public function findContainerForDelegateParameter(string $name, string $type, bool $isScalar, string $scalarContainerId='')
     {
+        /* Order to check things:
+         * 
+         * Exact match in ->source by name, and type is scalar OR the object in ->source is the same class as $type / same interface as $type
+         * Exact match in ->source by scalarContainerId, and type is scalar OR the object in ->source is the same class as $type / same interface as $type
+         * Match by class in source
+         * Match by Interface in source
+         * Match by class in constructors
+         * Match by Interface in constructors
+        */
         #echo("searching for delegate parameter: name=$name,type=$type,isScalar=$isScalar, scalarContainerId=$scalarContainerId\n");
+        if (isset($this->source[$name]) === true) {
+            if ($isScalar === true) {
+                return $this;
+            } else {
+                if (is_object($this->source[$name]) === true) {
+                    if (get_class($this->source[$name]) == $type) {
+                        return $this;
+                    }
+                    if (in_array($type, class_implements($this->source[$name])) === true) {
+                        return $this;
+                    }
+                }
+            }
+        } 
+        
+        if (isset($this->source[$scalarContainerId]) === true) {
+            if ($isScalar === true) {
+                return $this;
+            } else {
+                if (is_object($this->source[$scalarContainerId]) === true) {
+                    if (get_class($this->source[$scalarContainerId]) == $type) {
+                        return $this;
+                    }
+                    if (in_array($type, class_implements($this->source[$scalarContainerId])) === true) {
+                        return $this;
+                    }
+                }
+            }
+        }
+        
+        # at this point, the only options left are objects/constructors, so if we've been
+        # looking for a scalar, return false now.
         if ($isScalar === false) {
-            # first, look through source for a matching class
             foreach($this->source as $id => $value) {
-                if (is_object($value) === true && get_class($value) == $type) {
-                    return $this;
+                if (is_object($value) === true) {
+                    if (get_class($value) == $type) {
+                        return $this;
+                    }
+                    if (in_array($type, class_implements($value)) === true) {
+                        return $this;
+                    }
                 }
             }
-
-            # if we didn't find a match, look through source for an object whose class implements $name as an interface
-            foreach($this->source as $id => $value) {
-                if (is_object($value) === true && in_array($type, class_implements($value)) === true) {
-                    return $this;
-                }
-            }
-
-            # first, check the constructors
+            
             foreach($this->constructors as $id => $constructor) {
                 if (class_exists($constructor['className']) === true) {
                     if ($constructor['className'] == $type) {
                         return $this;
                     }
-                }
-            }
-
-            # if we didn't find a match, look through constructors for a class that implements $name as an I18nInterface
-            foreach($this->constructors as $id => $constructor) {
-                if (class_exists($constructor['className']) === true) {
-                    $implements = class_implements($constructor['className']);
-
-                    if (in_array($type, $implements) === true) {
+                    if (in_array($type, class_implements($constructor['className'])) === true) {
                         return $this;
                     }
                 }
             }
-        } elseif (isset($this->source[$scalarContainerId]) === true) {
-            return $this;
-        } elseif (isset($this->source[$name]) === true) {
-            return $this;
         }
+        
 
         foreach ($this->children as $child) {
             $gotIt = $child->findContainerForDelegateParameter($name, $type, $isScalar, $scalarContainerId);
@@ -113,46 +139,74 @@ trait ConstructionTrait
 
     public function buildDelegateParameter(string $name, string $type, bool $isScalar, string $scalarContainerId='')
     {
+        /* Order to check things:
+         * 
+         * Exact match in ->source by name, and type is scalar OR the object in ->source is the same class as $type / same interface as $type
+         * Exact match in ->source by scalarContainerId, and type is scalar OR the object in ->source is the same class as $type / same interface as $type
+         * Match by class in source
+         * Match by Interface in source
+         * Match by class in constructors
+         * Match by Interface in constructors
+        */
+        #echo("searching for delegate parameter: name=$name,type=$type,isScalar=$isScalar, scalarContainerId=$scalarContainerId\n");
+        if (isset($this->source[$name]) === true) {
+            if ($isScalar === true) {
+                return $this->source[$name];
+            } else {
+                if (is_object($this->source[$name]) === true) {
+                    if (get_class($this->source[$name]) == $type) {
+                        return $this->source[$name];
+                    }
+                    if (in_array($type, class_implements($this->source[$name])) === true) {
+                        return $this->source[$name];
+                    }
+                }
+            }
+        } 
+        
+        if (isset($this->source[$scalarContainerId]) === true) {
+            if ($isScalar === true) {
+                return $this->source[$scalarContainerId];
+            } else {
+                if (is_object($this->source[$scalarContainerId]) === true) {
+                    if (get_class($this->source[$scalarContainerId]) == $type) {
+                        return $this->source[$scalarContainerId];
+                    }
+                    if (in_array($type, class_implements($this->source[$scalarContainerId])) === true) {
+                        return $this->source[$scalarContainerId];
+                    }
+                }
+            }
+        }
+        
+        # at this point, the only options left are objects/constructors, so if we've been
+        # looking for a scalar, return false now.
         if ($isScalar === false) {
-            # first, look through source for an object with the same class
             foreach($this->source as $id => $value) {
-                if (is_object($value) === true && get_class($value) == $type) {
-                    return $value;
+                if (is_object($value) === true) {
+                    if (get_class($value) == $type) {
+                        return $value;
+                    }
+                    if (in_array($type, class_implements($value)) == true) {
+                        return $value;
+                    }
                 }
             }
-
-            # if we didn't find a match, look through source for an object whose class implements $name as an interface
-            foreach($this->source as $id => $value) {
-                if (is_object($value) === true && in_array($type, class_implements($value)) === true) {
-                    return $value;
-                }
-            }
-
-            # next, check the constructors
+            
             foreach($this->constructors as $id => $constructor) {
                 if (class_exists($constructor['className']) === true) {
                     if ($constructor['className'] == $type) {
                         return $this->construct($id);
                     }
-                }
-            }
-
-            # if we didn't find a match, look through constructors for a class that implements $name as an I18nInterface
-            foreach($this->constructors as $id => $constructor) {
-                if (class_exists($constructor['className']) === true) {
-                    $implements = class_implements($constructor['className']);
-                    if (in_array($type, $implements) === true) {
+                    
+                    if (in_array($type, class_implements($constructor['className'])) == true) {
                         return $this->construct($id);
                     }
                 }
             }
-
-
-        } elseif (isset($this->source[$scalarContainerId]) === true) {
-            return $this->get($scalarContainerId);
-        } elseif (isset($this->source[$name]) === true) {
-            return $this->get($name);
         }
+        
+        return false;
     }
     
     public function buildInjectableParameters(array $reflectionParameters, array $configuredParameters) : array
