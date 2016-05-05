@@ -17,10 +17,10 @@ trait ConstructionTrait
             foreach ($this->constructors as $constructorId=>$constructor) {
                 if (strpos($id, $constructorId) === 0) {
                     $this->constructors[$id] = [
-                        'className' => $constructor['className']. substr($id, strlen($constructorId)),
-                        'closure'=>&$constructor['closure'],
+                        'className' =>   $constructor['className']. substr($id, strlen($constructorId)),
+                        'closure'=>      &$constructor['closure'],
                         'isSingleton' => &$constructor['isSingleton'],
-                        'parameters' => &$constructor['parameters'],
+                        'parameters' =>  &$constructor['parameters'],
                         'instantiationClosures' => &$constructor['instantiationClosures'],
                     ];
                     $this->addParameter($id, 'fixed', 'name', substr($id, strlen($constructorId)));
@@ -306,7 +306,12 @@ trait ConstructionTrait
         }
 
         if ($constructor === false) {
-            throw new NotFoundException($id, array_keys($this->constructors));
+            if (class_exists($id) === true) {
+                $this->registerConstructor($id, $id);
+                $constructor = $this->constructors[$id];
+            } else {
+                throw new NotFoundException($id, array_keys($this->constructors));
+            }
         }
         
        
@@ -344,7 +349,11 @@ trait ConstructionTrait
 
     public function execute(string $id, string $method)
     {
-        $object = $this->get($id);
+        if ($this->has($id) === true) {
+            $object = $this->get($id);
+        } else {
+            $object = $this->construct($id);
+        }
         if (is_object($object) === false) {
             throw new \Exception("Tried to execute a method on container index $id, but that index did not contain an object or a constructor");
         }

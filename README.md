@@ -240,7 +240,30 @@ foreach ($emailConfig as $key=>$value) {
 
 ## Using a container to construct objects 
 
-In order to use a container to construct a class, you must register class using the ->registerConstructor(string $id, string $className, bool $isSingleton = false) method. Once registered, you can instantiate the class using either ->construct($id), or ->get($id). If when registering the constructor, you pass True for the $isSingleton parameter, then an object is only instantiated the first time you call ->construct($id) or ->get($id), and that instance is stored in the container. Future calls to ->construct($id) or ->get($id) will return the original instance.
+Your container can construct any class and perform constructor-based dependency injection on the new object. Additionally, you can configure setter-based dependency injection, or manually specify the values for specific constructor parameters. 
+
+Dependency injection can only use objects that are registered with the container.
+
+Here's a simple example:
+
+```php
+
+class MyClass
+{
+	public function __construct(\Psr\Log\LoggerInterface $logger)
+	{
+		$logger->debug('class created');
+	}
+}
+
+$container = new Lucid\Component\Container\Container();
+$container->registerConstructor('logger', 'Lucid\\Component\\BasicLogger\\BasicLogger', true);
+$myobject = $container->construct('MyClass');
+```
+
+In this example, we setup a class that depends on a Psr-3 logger as a constructor parameter. We register a class that implements the Psr-3 logging interface, and then construct the first class. The dependency is automatically detected and injected.
+
+Registering constructors for injection is dona via ->registerConstructor(string $id, string $className, bool $isSingleton = false) method. Once registered, you can instantiate the class using either ->construct($id), or ->get($id). If when registering the constructor, you pass True for the $isSingleton parameter, then an object is only instantiated the first time you call ->construct($id) or ->get($id), and that instance is stored in the container. Future calls to ->construct($id) or ->get($id) will return the original instance.
 
 ### __construct parameters
 
