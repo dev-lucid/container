@@ -73,6 +73,7 @@ trait TypedGetterTrait
         return $this;
     }
 
+
     public function string(string $id, string $defaultValue = '') : string
     {
         if ($this->has($id) === false) {
@@ -142,7 +143,10 @@ trait TypedGetterTrait
         if ($this->has($id) === false) {
             return $defaultValue;
         }
-        $stringValue = $this->string($id);
-        return explode($delimiter, $stringValue);
+        $value = $this->get($id);
+        if (is_array($value) === true) {
+            return $value;
+        }
+        return explode($delimiter, strval($value));
     }
 }
