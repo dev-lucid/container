@@ -1,5 +1,5 @@
 <?php
-use Lucid\Component\Container\Container;
+use Lucid\Container\InjectorFactoryContainer;
 
 class ConstructorTest_a
 {
@@ -81,13 +81,13 @@ class ConstructorTest_i
     public function __construct()
     {
     }
-    
-    public function setPropertyA($newValue) 
+
+    public function setPropertyA($newValue)
     {
         $this->propertyA = $newValue;
     }
 
-    public function setPropertyB($newValue) 
+    public function setPropertyB($newValue)
     {
         $this->propertyB = $newValue;
     }
@@ -100,7 +100,7 @@ class ConstructorTest extends \PHPUnit_Framework_TestCase
 
     public function setup()
     {
-        $this->container = new Container();
+        $this->container = new InjectorFactoryContainer();
         $this->container->registerConstructor('objectA', 'ConstructorTest_a', true);
         $this->container->registerConstructor('objectB', 'ConstructorTest_b', false);
 
@@ -117,7 +117,7 @@ class ConstructorTest extends \PHPUnit_Framework_TestCase
         $this->container->registerConstructor('objectG', 'ConstructorTest_g');
 
         $this->container->registerConstructor('view/', 'View__');
-        
+
         $this->container->registerConstructor('objectI', 'ConstructorTest_i');
         $this->container->addInstantiationClosure('objectI', function($object, $container) {
             $object->setPropertyA(1);
@@ -138,15 +138,15 @@ class ConstructorTest extends \PHPUnit_Framework_TestCase
         $objC = $this->container->construct('objectC');
         $this->assertEquals('c', $objC->testProperty);
     }
-    
-    
+
+
     public function testTestConstructorContainerParameters()
     {
         $objC = $this->container->construct('objectD');
         $this->assertEquals('d', $objC->testProperty);
     }
-    
-    
+
+
 
     public function testTestConstructorFindMatchingObject()
     {
@@ -155,7 +155,7 @@ class ConstructorTest extends \PHPUnit_Framework_TestCase
 
         $this->assertEquals('d', $objE->testSubObject->testProperty);
     }
-    
+
 
     public function testTestConstructorFindMatchingInterface()
     {
@@ -163,43 +163,43 @@ class ConstructorTest extends \PHPUnit_Framework_TestCase
         $objG = $this->container->construct('objectG');
         $this->assertEquals('f', $objG->testSubObject->testF_function());
     }
-    
-    
+
+
     public function testPrefixConstructors()
     {
         $objH = $this->container->construct('view/ConstructorTest_h');
         $this->assertEquals('f', $objH->testSubObject->testF_function());
     }
-    
+
     public function testSingletonParameter()
     {
         # A is registered as a singleton, B is NOT
         $objA1 = $this->container->construct('objectA');
         $objA2 = $this->container->construct('objectA');
         $objA1->testProperty = 'c';
-        
+
         # these should be the same object since it's registered as a singleton, so setting testProperty on one should set it on the other
-        $this->assertEquals($objA1->testProperty, $objA2->testProperty); 
-        
-        
+        $this->assertEquals($objA1->testProperty, $objA2->testProperty);
+
+
         $objB1 = $this->container->construct('objectB');
         $objB2 = $this->container->construct('objectB');
         $objB1->testProperty = 'c';
-        
-        # these are NOT the same object since it's NOT registered as a singleton, so setting testProperty 
+
+        # these are NOT the same object since it's NOT registered as a singleton, so setting testProperty
         # on one should NOT set it on the other
-        $this->assertNotEquals($objB1->testProperty, $objB2->testProperty); 
+        $this->assertNotEquals($objB1->testProperty, $objB2->testProperty);
     }
-    
+
     public function testUsingGetForConstructor()
     {
         $objA = $this->container->get('objectA');
         $this->assertEquals('a', $objA->testProperty);
-        
+
         $objH = $this->container->get('view/ConstructorTest_h');
         $this->assertEquals('f', $objH->testSubObject->testF_function());
     }
-    
+
     public function testInstantiationClosures()
     {
         $objI = $this->container->get('objectI');

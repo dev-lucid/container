@@ -1,15 +1,13 @@
 <?php
-namespace Lucid\Component\Container;
+namespace Lucid\Container;
 
-class PrefixDecorator implements \ArrayAccess, \Iterator, \Countable
+class PrefixDecorator implements \Interop\Container\ContainerInterface, ContainerInterface, \ArrayAccess, \Iterator, \Countable
 {
     protected $prefix    = null;
     protected $container = null;
     protected $iteratorTempArray = null;
 
     protected $methodsWithIdParameter = [
-        'set'=>true,
-        'has'=>true,
         'construct'=>true,
         'bool'=>true,
         'int'=>true,
@@ -17,13 +15,12 @@ class PrefixDecorator implements \ArrayAccess, \Iterator, \Countable
         'DateTime'=>true,
         'lock'=>true,
         'unlock'=>true,
-        'delete'=>true,
         'setSource'=>false,
         'setDateTimeFormats'=>false,
     ];
     protected $parameterNamesToPrefix = ['id', 'name', 'index'];
 
-    function __construct(string $prefix = '', $container)
+    function __construct(string $prefix = '', \Interop\Container\ContainerInterface $container)
     {
         $this->prefix = $prefix;
         $this->container = $container;
@@ -49,7 +46,7 @@ class PrefixDecorator implements \ArrayAccess, \Iterator, \Countable
             if (method_exists($actualContainer, $method) === false) {
                 # attempting to call a method that doesn't exist on the container. Likely trying to use __call method of accessing
                 # indexes.
-                $result =& $this->get($method, $parameters[0] ?? null);
+                $result =& $this->get($method);
                 return $result;
             } else {
                 $ref = new \ReflectionMethod($actualContainer, $method);
@@ -85,13 +82,28 @@ class PrefixDecorator implements \ArrayAccess, \Iterator, \Countable
         }
     }
 
-    public function &get(string $id)
+    public function has($id)
+    {
+        return $this->container->has($this->buildFinalId($id));
+    }
+
+    public function &get($id)
     {
         if ($this->has($id) === false) {
-            throw new NotFoundException($id, array_keys($this->container->getArray()));
+            throw new Exception\NotFoundException($id, array_keys($this->array()));
         }
         $value =& $this->container->get($this->buildFinalId($id));
         return $value;
+    }
+
+    public function set($id, $newValue)
+    {
+        return $this->container->set($this->buildFinalId($id), $newValue);
+    }
+
+    public function delete($id)
+    {
+        return $this->container->delete($this->buildFinalId($id));
     }
 
     public function setValues(array $array)
@@ -105,7 +117,7 @@ class PrefixDecorator implements \ArrayAccess, \Iterator, \Countable
     /* ArrayAccess methods: start */
     public function offsetExists($id)
     {
-        return $this->__call('has', [$id]);
+        return $this->has($id);
     }
 
     public function &offsetGet($id)
@@ -116,12 +128,12 @@ class PrefixDecorator implements \ArrayAccess, \Iterator, \Countable
 
     public function offsetSet($id, $newValue)
     {
-        return $this->__call('set', [$id, $newValue]);
+        return $this->set($id, $newValue);
     }
 
     public function offsetUnset($id)
     {
-        return $this->__call('delete', [$id]);
+        return $this->delete($id);
     }
     /* ArrayAccess methods: end */
 

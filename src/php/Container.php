@@ -1,12 +1,11 @@
 <?php
-namespace Lucid\Component\Container;
+namespace Lucid\Container;
 
-class Container implements ContainerInterface, InjectorFactoryInterface, \ArrayAccess, \Iterator, \Countable
+class Container implements \Interop\Container\ContainerInterface, ContainerInterface, TypedGetterInterface, LockableInterface, DelegateInterface, \ArrayAccess, \Iterator, \Countable
 {
-    use LockableTrait, ConstructionTrait, DelegateTrait, ArrayIteratorCountableTrait;
-    
+    use TypedGetterTrait, LockableTrait, DelegateTrait, ArrayIteratorCountableTrait;
+
     protected $source             = [];
-    protected $dateTimeFormats    = [\DateTime::ISO8601, \DateTime::W3C, 'Y-m-d H:i', 'U'];
     protected $requiredInterfaces = [];
 
     public function __construct()
@@ -31,23 +30,15 @@ class Container implements ContainerInterface, InjectorFactoryInterface, \ArrayA
         }
 
         if (is_object($this->source[$id]) === false) {
-            throw new RequiredInterfaceException('Container index '.$id.' does not contain an object, but this index is required to be an object that implements the following interfaces: '.implode(', ', $this->requiredInterfaces[$id]));
-            # throw new \Exception('Container index '.$id.' does not contain an object, but this index is required to be an object that implements the following interfaces: '.implode(', ', $this->requiredInterfaces[$id]));
+            throw new Exception\RequiredInterfaceException($id, $this->requiredInterfaces[$id]);
         }
 
         $implements = class_implements($this->source[$id]);
         foreach ($this->requiredInterfaces[$id] as $interface) {
             if (in_array($interface, $implements) === false) {
-                throw new RequiredInterfaceException('Container index '.$id.' does not implement a required interface. This index must implement the following interfaces: '.implode(', ', $this->requiredInterfaces[$id]));
-                # throw new \Exception();
+                throw new Exception\RequiredInterfaceException($id, $this->requiredInterfaces[$id]);
             }
         }
-    }
-
-    public function setDateTimeFormats(...$newFormats)
-    {
-        $this->dateTimeStringFormats = $newFormats;
-        return $this;
     }
 
     public function setSource(&$newSource)
@@ -58,135 +49,70 @@ class Container implements ContainerInterface, InjectorFactoryInterface, \ArrayA
             $classImplements = class_implements($newSource);
 
             if (in_array('ArrayAccess', $classImplements) === false || in_array('Iterator', $classImplements) === false) {
-                throw new InvalidSourceException();
+                throw new Exception\InvalidSourceException();
             }
             $this->source =& $newSource;
         } else {
-            throw new InvalidSourceException();
+            throw new Exception\InvalidSourceException();
         }
 
         return $this;
     }
 
-    public function has(string $id) : bool
+    public function has($id)
     {
-
         $has = (isset($this->source[$id]) === true);
-
-
         return $has;
     }
 
-    public function &get(string $id)
+    public function &get($id)
     {
         if (is_null($this->parent) === false){
             if ($this->parent->has($id) === true) {
-                return $this->parent->get($id);
+                $value =& $this->parent->get($id);
+                return $value;
             }
         }
 
         if ($this->has($id) === false) {
             foreach ($this->children as $child) {
                 if ($child->has($id) === true) {
-                    return $child->get($id);
+                    $value =& $child->get($id);
+                    return $value;
                 }
             }
-            
-            $constructor = $this->findConstructor($id);
-            if ($constructor !== false) {
-                $object = $this->construct($id, $constructor);
-                return $object;
+
+            $additionalSource = $this->getFromAdditionalSources($id);
+            if ($additionalSource !== false) {
+                return $additionalSource;
             }
-            throw new NotFoundException($id, array_keys($this->getArray()));
+
+            throw new Exception\NotFoundException($id, array_keys($this->array()));
         }
 
         $value =& $this->source[$id];
         return $value;
-    }    
+    }
 
-    public function delete(string $id)
+    protected function getFromAdditionalSources(string $id)
+    {
+        return false;
+    }
+
+    public function delete($id)
     {
         unset($this->source[$id]);
         return $this;
     }
 
-    public function set(string $id, $newValue)
+    public function set($id, $newValue)
     {
         if (isset($this->locks[$id]) === true) {
-            throw new LockedIndexException();
+            throw new Exception\LockedIndexException($id);
         }
         $this->source[$id] =& $newValue;
         $this->checkRequiredInterfaces($id);
         return $this;
-    }
-
-    public function string(string $id, string $defaultValue = '') : string
-    {
-        if ($this->has($id) === false) {
-            return $defaultValue;
-        }
-        $value = $this->get($id);
-        return strval($value);
-    }
-
-    public function int(string $id, int $defaultValue = -1) : int
-    {
-        if ($this->has($id) === false) {
-            return $defaultValue;
-        }
-        $value = $this->get($id);
-        return intval($value);
-    }
-
-    public function float(string $id, float $defaultValue = -1): float
-    {
-        if ($this->has($id) === false) {
-            return $defaultValue;
-        }
-        $value = $this->get($id, $defaultValue);
-        return floatval($value);
-    }
-
-    public function bool(string $id, bool $defaultValue=false) : bool
-    {
-        if ($this->has($id) === false) {
-            return $defaultValue;
-        }
-        $value = $this->get($id);
-        return boolval($value);
-    }
-
-    public function DateTime(string $id, DateTime $defaultValue = null) : \DateTime
-    {
-        if ($this->has($id) === false) {
-            return $defaultValue;
-        }
-        $value = $this->get($id, $defaultValue);
-
-        if (is_numeric($value) === true) {
-            return \DateTime::createFromFormat('U', $value);
-        } elseif (is_string($value) === true) {
-            foreach ($this->dateTimeFormats as $format) {
-                $parseResult = \DateTime::createFromFormat($format, $value);
-                if ($parseResult !== false) {
-                    return $parseResult;
-                }
-            }
-        }
-        throw new DateTimeParseException($value, $this->dateTimeFormats);
-    }
-
-    public function getArray() : array
-    {
-        if (is_array($this->source) === true) {
-            return $this->source;
-        } else {
-            $returnArray = [];
-            foreach ($this->source as $key=>$value) {
-                $returnArray[$key] = $value;
-            }
-            return $returnArray;
-        }
     }
 
     public function setValues(array $array)

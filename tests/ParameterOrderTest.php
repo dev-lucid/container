@@ -1,5 +1,6 @@
 <?php
-use Lucid\Component\Container\Container;
+use Lucid\Container\Container;
+use Lucid\Container\InjectorFactoryContainer;
 
 
 
@@ -20,18 +21,18 @@ class ParameterOrderTest extends \PHPUnit_Framework_TestCase
 
     public function setup()
     {
-        $this->container = new Container();
+        $this->container = new InjectorFactoryContainer();
         $this->container->set('request', new Container());
         $this->container->set('session', new Container());
         $this->container->set('cookie', new Container());
-        
+
         $this->container->get('request')->set('name', 'request');
         $this->container->get('session')->set('name', 'session');
         $this->container->get('cookie')->set('name', 'cookie');
-        
+
         $this->container->registerConstructor('objectA', 'ParameterOrderTest_classA');
     }
-    
+
     public function testContainerNameSanityCheck()
     {
         $this->assertEquals('request', $this->container->get('request')->string('name'));

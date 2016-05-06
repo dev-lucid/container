@@ -1,5 +1,5 @@
 <?php
-use Lucid\Component\Container\Container;
+use Lucid\Container\Container;
 
 /*
 The only difference between a RequestContainer and Container is how booleans are handled,
@@ -24,7 +24,7 @@ class DateTimeTest extends \PHPUnit_Framework_TestCase
         $this->assertEquals($dt2->format('U'), 1);
 
         $container->set('goingToError', 'hello');
-        $this->setExpectedException(\Lucid\Component\Container\DateTimeParseException::class);
+        $this->setExpectedException(\Lucid\Container\Exception\DateTimeParseException::class);
         $container->DateTime('goingToError');
 
     }

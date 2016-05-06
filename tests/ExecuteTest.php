@@ -1,5 +1,5 @@
 <?php
-use Lucid\Component\Container\Container;
+use Lucid\Container\InjectorFactoryContainer;
 
 class ExecuteTest_a
 {
@@ -47,7 +47,7 @@ class ExecuteTest extends \PHPUnit_Framework_TestCase
 
     public function setup()
     {
-        $this->container = new Container();
+        $this->container = new InjectorFactoryContainer();
         $this->container->registerConstructor('objectA', 'ExecuteTest_a', true);
         $this->container->registerConstructor('objectB', 'ExecuteTest_b', true);
         $this->container->registerConstructor('objectC', 'ExecuteTest_c', true);
@@ -64,7 +64,6 @@ class ExecuteTest extends \PHPUnit_Framework_TestCase
         $this->assertEquals('test2', $this->container->execute('objectA', 'testMethod2'));
     }
 
-
     public function testExecuteFindParameterByClass()
     {
         $this->assertEquals('ExecuteTest_b', $this->container->execute('objectA', 'testMethod3'));
@@ -73,5 +72,11 @@ class ExecuteTest extends \PHPUnit_Framework_TestCase
     public function testExecuteFindParameterByInterface()
     {
         $this->assertEquals('ExecuteTest_c', $this->container->execute('objectA', 'testMethod4'));
+    }
+
+    public function testExecuteAfterInstantiation()
+    {
+        $objectA = $this->container->construct('objectA');
+        $this->assertEquals('ExecuteTest_c', $this->container->execute($objectA, 'testMethod4'));
     }
 }

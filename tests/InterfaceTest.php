@@ -1,5 +1,5 @@
 <?php
-use Lucid\Component\Container\Container;
+use Lucid\Container\Container;
 
 Interface TestInterface
 {
@@ -31,7 +31,7 @@ class InterfaceTest extends \PHPUnit_Framework_TestCase
     {
         $this->container->set('requiresTestInterface', new TestClass1());
         $this->container->set('doesNotRequireTestInterface', new TestClass2());
-        $this->setExpectedException(\Lucid\Component\Container\RequiredInterfaceException::class);
+        $this->setExpectedException(\Lucid\Container\Exception\RequiredInterfaceException::class);
         $this->container->set('requiresTestInterface', new TestClass2());
     }
 
@@ -41,7 +41,7 @@ class InterfaceTest extends \PHPUnit_Framework_TestCase
         $this->container->set('willRequireTestInterface2', new TestClass2());
 
         $this->container->requireInterfacesForIndex('willRequireTestInterface1', 'TestInterface');
-        $this->setExpectedException(\Lucid\Component\Container\RequiredInterfaceException::class);
+        $this->setExpectedException(\Lucid\Container\Exception\RequiredInterfaceException::class);
         $this->container->requireInterfacesForIndex('willRequireTestInterface2', 'TestInterface');
     }
 }

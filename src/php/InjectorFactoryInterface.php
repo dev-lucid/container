@@ -1,8 +1,8 @@
 <?php
-namespace Lucid\Component\Container;
+namespace Lucid\Container;
 
 interface InjectorFactoryInterface
 {
-    public function construct(string $name);
-    public function execute(string $name, string $method);
+    public function construct(string $id);
+    public function execute($idOrObject, string $method);
 }

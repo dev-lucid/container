@@ -1,7 +1,7 @@
 <?php
-namespace Lucid\Component\Container;
+namespace Lucid\Container\Exception;
 
-class RequestInvalidBoolException extends \Exception
+class InvalidBooleanException extends \Exception
 {
     public function __construct($value, $trueValues, $falseValues)
     {

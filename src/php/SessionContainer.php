@@ -1,5 +1,5 @@
 <?php
-namespace Lucid\Component\Container;
+namespace Lucid\Container;
 
 class SessionContainer extends Container
 {

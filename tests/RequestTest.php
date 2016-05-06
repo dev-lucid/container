@@ -1,11 +1,11 @@
 <?php
-use Lucid\Component\Container\RequestContainer;
+use Lucid\Container\RequestContainer;
 
 /*
 The only difference between a RequestContainer and Container is how booleans are handled,
 so this unit test only  Addresses boolean values.
 */
-class BoolTest extends \PHPUnit_Framework_TestCase
+class RequestTest extends \PHPUnit_Framework_TestCase
 {
     public function testBoolTrue()
     {
@@ -27,7 +27,7 @@ class BoolTest extends \PHPUnit_Framework_TestCase
         $this->assertTrue($container->bool('BoolTrueYes'));
 
         $this->assertFalse($container->bool('nullValue'));
-        $this->setExpectedException(Lucid\Component\Container\RequestInvalidBoolException::class);
+        $this->setExpectedException(Lucid\Container\Exception\InvalidBooleanException::class);
         $this->assertFalse($container->bool('InvalidValue'));
     }
 

@@ -1,5 +1,5 @@
 <?php
-use Lucid\Component\Container\Container;
+use Lucid\Container\Container;
 
 class DelegateTest extends \PHPUnit_Framework_TestCase
 {

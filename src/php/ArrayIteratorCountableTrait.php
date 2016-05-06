@@ -1,5 +1,5 @@
-<?php 
-namespace Lucid\Component\Container;
+<?php
+namespace Lucid\Container;
 
 trait ArrayIteratorCountableTrait
 {
@@ -51,7 +51,7 @@ trait ArrayIteratorCountableTrait
     /* Countable methods: start */
     function count()
     {
-        return count(array_keys($this->getArray()));
+        return count(array_keys($this->array()));
     }
     /* Countable methods: end */
 }

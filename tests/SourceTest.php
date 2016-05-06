@@ -1,5 +1,5 @@
 <?php
-use Lucid\Component\Container\Container;
+use Lucid\Container\Container;
 
 class SourceTest extends \PHPUnit_Framework_TestCase
 {
@@ -12,7 +12,7 @@ class SourceTest extends \PHPUnit_Framework_TestCase
         $source = [];
         $container->setSource($source);
 
-        $this->setExpectedException(\Lucid\Component\Container\InvalidSourceException::class);
+        $this->setExpectedException(\Lucid\Container\Exception\InvalidSourceException::class);
         $invalidSource = 'hi';
         $container->setSource($invalidSource);
     }

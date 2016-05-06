@@ -1,9 +1,19 @@
 <?php
-namespace Lucid\Component\Container;
+namespace Lucid\Container;
 
-trait ConstructionTrait
+class InjectorFactoryContainer extends Container implements InjectorFactoryInterface
 {
     protected $constructors = [];
+
+    protected function getFromAdditionalSources(string $id)
+    {
+        $constructor = $this->findConstructor($id);
+        if ($constructor !== false) {
+            $object = $this->construct($id, $constructor);
+            return $object;
+        }
+        return false;
+    }
 
     public function findConstructor(string $id)
     {
@@ -154,7 +164,6 @@ trait ConstructionTrait
             }
         }
 
-
         foreach ($this->children as $child) {
             $gotIt = $child->findContainerForDelegateParameter($name, $type, $isScalar, $scalarContainerId);
             if ($gotIt !== false) {
@@ -206,7 +215,7 @@ trait ConstructionTrait
                 }
             }
         }
-        
+
         if (isset($this->constructors[$name]) === true) {
             if (is_callable($this->constructors[$name]['closure']) === true) {
                 return $this->construct($name);
@@ -310,19 +319,17 @@ trait ConstructionTrait
                 $this->registerConstructor($id, $id);
                 $constructor = $this->constructors[$id];
             } else {
-                throw new NotFoundException($id, array_keys($this->constructors));
+                throw new \Interop\Container\Exception\NotFoundException();
+                # throw new NotFoundException($id, array_keys($this->constructors));
             }
         }
-        
-       
 
         if ($constructor['isSingleton'] === true && isset($this->source[$id]) === true) {
             return $this->source[$id];
         }
 
-        
         if (is_callable($constructor['closure']) === true) {
-            
+
             $parameters = $this->buildInjectableParameters((new \ReflectionFunction($constructor['closure']))->getParameters(), $constructor['parameters']);
             $object = $constructor['closure'](...$parameters);
         } else {
@@ -347,15 +354,19 @@ trait ConstructionTrait
         return $object;
     }
 
-    public function execute(string $id, string $method)
+    public function execute($idOrObject, string $method)
     {
-        if ($this->has($id) === true) {
-            $object = $this->get($id);
+        if (is_object($idOrObject) === true) {
+            $object = $idOrObject;
         } else {
-            $object = $this->construct($id);
-        }
-        if (is_object($object) === false) {
-            throw new \Exception("Tried to execute a method on container index $id, but that index did not contain an object or a constructor");
+            if ($this->has($idOrObject) === true) {
+                $object = $this->get($idOrObject);
+            } else {
+                $object = $this->construct($idOrObject);
+            }
+            if (is_object($object) === false) {
+                throw new \Exception("Tried to execute a method on container index $idOrObject, but that index did not contain an object or a constructor");
+            }
         }
 
         $parameters = $this->buildInjectableParameters((new \ReflectionMethod($object, $method))->getParameters(), []);

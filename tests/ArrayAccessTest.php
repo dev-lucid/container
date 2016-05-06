@@ -1,6 +1,6 @@
 <?php
-use Lucid\Component\Container\Container;
-use Lucid\Component\Container\PrefixDecorator;
+use Lucid\Container\Container;
+use Lucid\Container\PrefixDecorator;
 
 class ArrayAccessTest extends \PHPUnit_Framework_TestCase
 {

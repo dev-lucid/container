@@ -1,5 +1,5 @@
 <?php
-use Lucid\Component\Container\Container;
+use Lucid\Container\InjectorFactoryContainer;
 
 class CallableTest_a
 {
@@ -29,7 +29,7 @@ class CallableTest extends \PHPUnit_Framework_TestCase
 
     public function setup()
     {
-        $this->container = new Container();
+        $this->container = new InjectorFactoryContainer();
         $this->container->set('callable1', function(string $testParam1) {
             return $testParam1;
         });

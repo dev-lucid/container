@@ -1,10 +1,10 @@
-<?php 
-namespace Lucid\Component\Container;
+<?php
+namespace Lucid\Container;
 
-trait LockableTrait 
+trait LockableTrait
 {
     protected $locks = [];
-    
+
     public function lock(string $id)
     {
         $this->locks[$id] = true;

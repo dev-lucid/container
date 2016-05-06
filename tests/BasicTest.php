@@ -1,12 +1,12 @@
 <?php
-use Lucid\Component\Container\Container;
+use Lucid\Container\Container;
 
 class BasicTest extends \PHPUnit_Framework_TestCase
 {
     public function testSource()
     {
         $container = new Container();
-        $this->assertTrue(is_array($container->getArray()));
+        $this->assertTrue(is_array($container->array()));
     }
 
     public function testIssetUnset()

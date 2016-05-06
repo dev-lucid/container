@@ -1,6 +1,6 @@
 <?php
-use Lucid\Component\Container\Container;
-use Lucid\Component\Container\PrefixDecorator;
+use Lucid\Container\Container;
+use Lucid\Container\PrefixDecorator;
 
 class LockTest extends \PHPUnit_Framework_TestCase
 {
@@ -16,7 +16,7 @@ class LockTest extends \PHPUnit_Framework_TestCase
         $this->assertEquals('value1', $this->container->get('test1'));
         $this->container->lock('test1');
         $this->assertEquals('value1', $this->container->get('test1'));
-        $this->setExpectedException(\Lucid\Component\Container\LockedIndexException::class);
+        $this->setExpectedException(\Lucid\Container\Exception\LockedIndexException::class);
         $this->container->set('test1', 'value2');
     }
 
