@@ -40,14 +40,17 @@ Note that container stored in $appContainer is an InjectorFactoryContainer class
 ```php
 # this code is located in an appropriatedly named file for your autoloader to discover
 namespace App\Controller;
+use \Psr\Log\LoggerInterface;
+use \Lucid\Container\ContainerInterface;
+
 class Users 
 {
-	public function __construct(\Container\ContainerInterface $config)
+	public function __construct(ContainerInterface $config)
 	{
 		$this->config = $config;
 	}
 	
-	public function processRegistration(\Psr\Log\LoggerInterface $logger, \Lucid\Container\ContainerInterface $request, \Container\ContainerInterface $session)
+	public function processRegistration(LoggerInterface $logger, ContainerInterface $request, ContainerInterface $session)
 	{
 		$logger->debug('Processing a registration!');
 		$logger->debug('The user submitted this email address: '.$request->string('email'));
@@ -64,8 +67,8 @@ In this last example, a class is declared: App\Controller\Users. This class's co
 It has a second method named processRegistration, and this has 3 parameters:
 
 * $logger, which must implement \Psr\Log\LoggerInterface
-* $request, which must implement \Container\ContainerInterface
-* $session, which must implement \Container\ContainerInterface
+* $request, which must implement \Lucid\Container\ContainerInterface
+* $session, which must implement \Lucid\Container\ContainerInterface
 
 The last line does all the magic. From left to right:
 
@@ -76,7 +79,7 @@ The last line does all the magic. From left to right:
 
 In this case, we did NOT configure any constructors, so the parameter will be treated a class to be instantiated. The execute function does so. During this process, the function will:
 
-* * Use reflection to discover that the __construct method if the class has a parameter named $config that must implement \Container\ContainerInterface. 
+* * Use reflection to discover that the __construct method if the class has a parameter named $config that must implement \Lucid\Container\ContainerInterface. 
 * * The container looks for an index named 'config', verifies that it suppors the necessary interface 
 * * Calls the constructor and passes the correct index in the container for that parameter
 
@@ -123,10 +126,10 @@ if ($_ENV['stage'] === 'phpunit') {
 		$logger->setOutputFile('/var/log/development.log');
 	}
 	if ($_ENV['stage'] == 'qa') {
-		$logger->setOutputFile('/var/log/qa');
+		$logger->setOutputFile('/var/log/qa.log');
 	}
 	if ($_ENV['stage'] == 'production') {
-		$logger->setOutputFile('/var/log/production');
+		$logger->setOutputFile('/var/log/production.log');
 	}
 	app()->set('logger',  $logger);
 }

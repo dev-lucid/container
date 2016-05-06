@@ -319,8 +319,7 @@ class InjectorFactoryContainer extends Container implements InjectorFactoryInter
                 $this->registerConstructor($id, $id);
                 $constructor = $this->constructors[$id];
             } else {
-                throw new \Interop\Container\Exception\NotFoundException();
-                # throw new NotFoundException($id, array_keys($this->constructors));
+                throw new Exception\NotFoundException($id, array_keys($this->constructors));
             }
         }
 
