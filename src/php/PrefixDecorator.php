@@ -26,7 +26,7 @@ class PrefixDecorator implements \Interop\Container\ContainerInterface, Containe
         $this->container = $container;
     }
 
-    public function getContainer()
+    public function getContainer() : ContainerInterface
     {
         return $this->container;
     }
@@ -82,7 +82,7 @@ class PrefixDecorator implements \Interop\Container\ContainerInterface, Containe
         }
     }
 
-    public function has($id)
+    public function has($id) : bool
     {
         return $this->container->has($this->buildFinalId($id));
     }
@@ -96,17 +96,17 @@ class PrefixDecorator implements \Interop\Container\ContainerInterface, Containe
         return $value;
     }
 
-    public function set($id, $newValue)
+    public function set($id, $newValue) : ContainerInterface
     {
         return $this->container->set($this->buildFinalId($id), $newValue);
     }
 
-    public function delete($id)
+    public function delete($id) : ContainerInterface
     {
         return $this->container->delete($this->buildFinalId($id));
     }
 
-    public function setValues(array $array)
+    public function setValues(array $array) : ContainerInterface
     {
         foreach ($array as $key=>$value) {
             $this->set($this->prefix . $key, $value);
@@ -115,7 +115,7 @@ class PrefixDecorator implements \Interop\Container\ContainerInterface, Containe
     }
 
     /* ArrayAccess methods: start */
-    public function offsetExists($id)
+    public function offsetExists($id) : bool
     {
         return $this->has($id);
     }
@@ -172,7 +172,7 @@ class PrefixDecorator implements \Interop\Container\ContainerInterface, Containe
     /* Iterator methods: end */
 
     /* Countable methods: start */
-    function count()
+    function count() : int
     {
         $this->setupIteratorTempArray();
         return count(array_keys($this->iteratorTempArray));

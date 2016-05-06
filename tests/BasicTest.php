@@ -6,7 +6,7 @@ class BasicTest extends \PHPUnit_Framework_TestCase
     public function testSource()
     {
         $container = new Container();
-        $this->assertTrue(is_array($container->array()));
+        $this->assertTrue(is_array($container->getValues()));
     }
 
     public function testIssetUnset()
@@ -77,5 +77,19 @@ class BasicTest extends \PHPUnit_Framework_TestCase
         $this->assertTrue($container->int('testKey') === 1);
         $container->delete('testKey');
         $this->assertFalse($container->has('testKey'));
+    }
+
+    public function testArray()
+    {
+        $container = new Container();
+        $container->set('testKey', '1,2,3');
+        $this->assertTrue($container->has('testKey'));
+        $this->assertTrue(count($container->array('testKey')) == 3);
+        $this->assertTrue($container->array('testKey')[1] == 2);
+        $container->delete('testKey');
+        $this->assertFalse($container->has('testKey'));
+
+        $container->set('testKey', '1|2|3');
+        $this->assertTrue($container->array('testKey', [], '|')[1] == 2);
     }
 }

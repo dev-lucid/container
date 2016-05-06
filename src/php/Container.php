@@ -12,7 +12,7 @@ class Container implements \Interop\Container\ContainerInterface, ContainerInter
     {
     }
 
-    public function requireInterfacesForIndex(string $id, ...$interfaces)
+    public function requireInterfacesForIndex(string $id, ...$interfaces) : ContainerInterface
     {
         if (isset($this->requiredInterfaces[$id]) === false) {
             $this->requiredInterfaces[$id] = [];
@@ -21,12 +21,13 @@ class Container implements \Interop\Container\ContainerInterface, ContainerInter
         if ($this->has($id) === true) {
             $this->checkRequiredInterfaces($id);
         }
+        return $this;
     }
 
-    protected function checkRequiredInterfaces(string $id)
+    protected function checkRequiredInterfaces(string $id) : ContainerInterface
     {
         if (isset($this->requiredInterfaces[$id]) === false) {
-            return;
+            return $this;
         }
 
         if (is_object($this->source[$id]) === false) {
@@ -39,9 +40,10 @@ class Container implements \Interop\Container\ContainerInterface, ContainerInter
                 throw new Exception\RequiredInterfaceException($id, $this->requiredInterfaces[$id]);
             }
         }
+        return $this;
     }
 
-    public function setSource(&$newSource)
+    public function setSource(&$newSource) : ContainerInterface
     {
         if (is_array($newSource) === true ) {
             $this->source =& $newSource;
@@ -59,7 +61,7 @@ class Container implements \Interop\Container\ContainerInterface, ContainerInter
         return $this;
     }
 
-    public function has($id)
+    public function has($id) : bool
     {
         $has = (isset($this->source[$id]) === true);
         return $has;
@@ -99,13 +101,13 @@ class Container implements \Interop\Container\ContainerInterface, ContainerInter
         return false;
     }
 
-    public function delete($id)
+    public function delete($id)  : ContainerInterface
     {
         unset($this->source[$id]);
         return $this;
     }
 
-    public function set($id, $newValue)
+    public function set($id, $newValue) : ContainerInterface
     {
         if (isset($this->locks[$id]) === true) {
             throw new Exception\LockedIndexException($id);
@@ -115,12 +117,25 @@ class Container implements \Interop\Container\ContainerInterface, ContainerInter
         return $this;
     }
 
-    public function setValues(array $array)
+    public function setValues(array $newValues) : ContainerInterface
     {
-        foreach ($array as $key=>$value) {
-            $this->set($key, $value);
+        foreach ($newValues as $id=>$newValue) {
+            $this->set($id, $newValue);
         }
         return $this;
+    }
+
+    public function getValues() : array
+    {
+        if (is_array($this->source) === true) {
+            return $this->source;
+        } else {
+            $returnArray = [];
+            foreach ($this->source as $id=>$value) {
+                $returnArray[$id] = $value;
+            }
+            return $returnArray;
+        }
     }
 
     public function &__call($method, $parameters)

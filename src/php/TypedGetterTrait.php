@@ -1,25 +1,75 @@
 <?php
+/*
+ * This file is part of the Lucid Container package.
+ *
+ * (c) Mike Thorn <mthorn@devlucid.com>
+ *
+ * For the full copyright and license information, please view the LICENSE
+ * file that was distributed with this source code.
+ */
+
 namespace Lucid\Container;
 
+/**
+ * Functions used to get data out of the container and cast them to a particular type.
+ *
+ * @author Mike Thorn <mthorn@devlucid.com>
+ */
 trait TypedGetterTrait
 {
+    /**
+     * List of formats that ->DateTime() will try to convert values using \DateTime::createFromFormat
+     * See: http://php.net/manual/en/datetime.createfromformat.php
+     *
+     * @var array
+     */
     protected $dateTimeFormats = [\DateTime::ISO8601, \DateTime::W3C, 'Y-m-d H:i', 'U'];
+
+    /**
+     * List of values that will result in true when ->bool is called.
+     *
+     * @var array
+     */
     protected $boolTrueValues  = [true];
+
+    /**
+     * List of values that will result in false when ->bool is called.
+     *
+     * @var array
+     */
     protected $boolFalseValues = [false];
 
-    public function setBoolTrueValues(...$newValues)
-    {
-        $this->boolTrueValues = $newValues;
-    }
-
-    public function setBoolFalseValues(...$newValues)
-    {
-        $this->boolFalseValues = $newValues;
-    }
-
-    public function setDateTimeFormats(...$newFormats)
+    /**
+     * List of formats that ->DateTime() will try to convert values using \DateTime::createFromFormat
+     * See: http://php.net/manual/en/datetime.createfromformat.php
+     *
+     * @param string $appName
+     */
+    public function setDateTimeFormats(...$newFormats) : TypedGetterInterface
     {
         $this->dateTimeStringFormats = $newFormats;
+        return $this;
+    }
+
+    /**
+     * Sets the list of values that will result in true when ->bool is called.
+     *
+     * @var array
+     */
+    public function setBoolTrueValues(...$newValues) : TypedGetterInterface
+    {
+        $this->boolTrueValues = $newValues;
+        return $this;
+    }
+
+    /**
+     * Sets the list of values that will result in false when ->bool is called.
+     *
+     * @var array
+     */
+    public function setBoolFalseValues(...$newValues) : TypedGetterInterface
+    {
+        $this->boolFalseValues = $newValues;
         return $this;
     }
 
@@ -64,7 +114,7 @@ trait TypedGetterTrait
         if (in_array($value, $this->boolFalseValues, true) === true) {
             return false;
         }
-        throw new Exception\InvalidBooleanException($value, $this->boolTrueValues, $this->boolFalseValues);
+        throw new Exception\InvalidBooleanException($id, $value, $this->boolTrueValues, $this->boolFalseValues);
     }
 
     public function DateTime(string $id, DateTime $defaultValue = null) : \DateTime
@@ -84,19 +134,15 @@ trait TypedGetterTrait
                 }
             }
         }
-        throw new Exception\DateTimeParseException($value, $this->dateTimeFormats);
+        throw new Exception\DateTimeParseException($id, $value, $this->dateTimeFormats);
     }
 
-    public function array() : array
+    public function array(string $id, array $defaultValue = [], string $delimiter=',') : array
     {
-        if (is_array($this->source) === true) {
-            return $this->source;
-        } else {
-            $returnArray = [];
-            foreach ($this->source as $key=>$value) {
-                $returnArray[$key] = $value;
-            }
-            return $returnArray;
+        if ($this->has($id) === false) {
+            return $defaultValue;
         }
+        $stringValue = $this->string($id);
+        return explode($delimiter, $stringValue);
     }
 }

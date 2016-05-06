@@ -51,7 +51,7 @@ trait ArrayIteratorCountableTrait
     /* Countable methods: start */
     function count()
     {
-        return count(array_keys($this->array()));
+        return count(array_keys($this->getValues()));
     }
     /* Countable methods: end */
 }

@@ -42,7 +42,7 @@ class InjectorFactoryContainer extends Container implements InjectorFactoryInter
         return $has;
     }
 
-    public function registerConstructor(string $id, string $className = '', bool $isSingleton = false, callable $closure = null)
+    public function registerConstructor(string $id, string $className = '', bool $isSingleton = false, callable $closure = null) : InjectorFactoryInterface
     {
         if (is_callable($closure) === true) {
             $this->constructors[$id] = [
@@ -64,7 +64,7 @@ class InjectorFactoryContainer extends Container implements InjectorFactoryInter
         return $this;
     }
 
-    public function addParameter(string $id, string $type, string $name, string $value = null)
+    public function addParameter(string $id, string $type, string $name, string $value = null) : InjectorFactoryInterface
     {
         if ($type != 'container' && $type != 'fixed') {
             throw new \Exception('Container->addParameter parameter $type may only contain values \'container\' or \'fixed\'');
@@ -76,7 +76,7 @@ class InjectorFactoryContainer extends Container implements InjectorFactoryInter
         return $this;
     }
 
-    public function addInstantiationClosure(string $id, callable $closure)
+    public function addInstantiationClosure(string $id, callable $closure) : InjectorFactoryInterface
     {
         $this->constructors[$id]['instantiationClosures'][] = $closure;
         return $this;
