@@ -74,24 +74,24 @@ The last line does all the magic. From left to right:
 
 * Calling the global function app() with no parameter will simply return instantiated the InjectorFactoryContainer. 
 * The execute method takes two parameters:
-* * An index in the container which contains an object or an alredy instanted class or the name of an object that the constructor knows how to instantiate,
-* * A method to call
+ * An index in the container which contains an object or an alredy instanted class or the name of an object that the constructor knows how to instantiate,
+ * A method to call
 
 In this case, we did NOT configure any constructors, so the parameter will be treated a class to be instantiated. The execute function does so. During this process, the function will:
 
-* * Use reflection to discover that the __construct method if the class has a parameter named $config that must implement \Lucid\Container\ContainerInterface. 
-* * The container looks for an index named 'config', verifies that it suppors the necessary interface 
-* * Calls the constructor and passes the correct index in the container for that parameter
+* Use reflection to discover that the __construct method if the class has a parameter named $config that must implement \Lucid\Container\ContainerInterface. 
+* The container looks for an index named 'config', verifies that it supports the necessary interface 
+* Calls the constructor and passes the correct index in the container for that parameter
 
 The execute function then calls the processRegistrationMethod. This involves the same basic steps as constructing the object:
 
-* * Use reflection to discover that the metho has 3 parameters
-* * Locate appropriate indexes inside the container for those parameters,
-* * Call the method with the right values for each parameter.
+* Use reflection to discover that the method has 3 parameters
+* Locate appropriate indexes inside the container for those parameters,
+* Call the method with the right values for each parameter.
 
 ## How to unit test in this configuration
 
-Given the above example, the best way to unit test would be to setup different indexes in your container based on whether or not you're unit testing, in a development environment, or in production. Consider thise code:
+Given the above example, the best way to unit test would be to setup different constructors in your container based on whether or not you're unit testing, in a development environment, or in production. Consider thise code:
 
 ```php
 global $appContainer;

@@ -130,8 +130,12 @@ A number of catchable exception classes are used:
 
 
 # Advanced Stuff
-* [Neat ideas on using as a service locator](ServiceLocator.md)
-* [Closures and how to store/call them](Closures.md)
-* [More info on the PrefixDecorator class](PrefixDecorator.md)
-* [All about how to use the InjectorFactoryContainer class](InjectorFactory.md)
-* [Notes on the delegate container functionality](DelegateContainer.md)
+* [Neat ideas on using as a service locator](docs/ServiceLocator.md)
+* [Closures and how to store/call them](docs/Closures.md)
+* [More info on the PrefixDecorator class](docs/PrefixDecorator.md)
+* [All about how to use the InjectorFactoryContainer class](docs/InjectorFactory.md)
+* [Notes on the delegate container functionality](docs/DelegateContainer.md)
+
+# Things I might add in the future:
+* Examples of suggested constructor configuration for popular packages (monolog, swiftmailer, etc)
+* Some way of injecting a Psr-3 logger into the container's class for debugging purposes
