@@ -1,375 +1,209 @@
 <?php
+/*
+ * This file is part of the Lucid Container package.
+ *
+ * (c) Mike Thorn <mthorn@devlucid.com>
+ *
+ * For the full copyright and license information, please view the LICENSE
+ * file that was distributed with this source code.
+ */
+
 namespace Lucid\Container;
 
-class InjectorFactoryContainer extends Container implements InjectorFactoryInterface
+/**
+ * A container that can also construct objects with dependency injection.
+ *
+ * @author Mike Thorn <mthorn@devlucid.com>
+ */
+class InjectorFactoryContainer extends Container implements InjectorFactoryInterface, Constructor\Parameter\ParameterInjectorInterface
 {
-    protected $constructors = [];
-
     protected function getFromAdditionalSources(string $id)
     {
         $constructor = $this->findConstructor($id);
         if ($constructor !== false) {
-            $object = $this->construct($id, $constructor);
+            $object = $this->construct($id, null, $constructor);
             return $object;
         }
         return false;
     }
 
-    public function findConstructor(string $id)
+    public function findConstructor(string $id = '', string $type = null)
     {
-        $has = false;
-
-        if (isset($this->constructors[$id]) === true) {
-            $has = $this->constructors[$id];
+        # we always *always* have an id
+        # we do NOT always have a type
+        if (class_exists($id) === true && ($type == '' || is_null($type) === true)) {
+            $type = $id;
         }
 
-        if ($has === false) {
-            foreach ($this->constructors as $constructorId=>$constructor) {
-                if (strpos($id, $constructorId) === 0) {
-                    $this->constructors[$id] = [
-                        'className' =>   $constructor['className']. substr($id, strlen($constructorId)),
-                        'closure'=>      &$constructor['closure'],
-                        'isSingleton' => &$constructor['isSingleton'],
-                        'parameters' =>  &$constructor['parameters'],
-                        'instantiationClosures' => &$constructor['instantiationClosures'],
-                    ];
-                    $this->addParameter($id, 'fixed', 'name', substr($id, strlen($constructorId)));
-                    $has = $this->constructors[$id];
-                }
-            }
-        }
-
-        return $has;
-    }
-
-    public function registerConstructor(string $id, string $className = '', bool $isSingleton = false, callable $closure = null) : InjectorFactoryInterface
-    {
-        if (is_callable($closure) === true) {
-            $this->constructors[$id] = [
-                'className'=>$className,
-                'closure'=>$closure,
-                'isSingleton'=>$isSingleton,
-                'parameters'=>[],
-                'instantiationClosures' =>[],
-            ];
-        } else {
-            $this->constructors[$id] = [
-                'className'=>$className,
-                'closure'=>$closure,
-                'isSingleton'=>$isSingleton,
-                'parameters'=>[],
-                'instantiationClosures' =>[],
-            ];
-        }
-        return $this;
-    }
-
-    public function addParameter(string $id, string $type, string $name, string $value = null) : InjectorFactoryInterface
-    {
-        if ($type != 'container' && $type != 'fixed') {
-            throw new \Exception('Container->addParameter parameter $type may only contain values \'container\' or \'fixed\'');
-        }
-        $this->constructors[$id]['parameters'][$name] = [
-            'type'=>$type,
-            'value'=>$value,
-        ];
-        return $this;
-    }
-
-    public function addInstantiationClosure(string $id, callable $closure) : InjectorFactoryInterface
-    {
-        $this->constructors[$id]['instantiationClosures'][] = $closure;
-        return $this;
-    }
-
-    public function findContainerForDelegateParameter(string $name, string $type, bool $isScalar, string $scalarContainerId='')
-    {
-        /* Order to check things:
-         *
-         * Exact match in ->source by name, and type is scalar OR the object in ->source is the same class as $type / same interface as $type
-         * Exact match in ->source by scalarContainerId, and type is scalar OR the object in ->source is the same class as $type / same interface as $type
-         * Exact match in ->constructors by name, and class name is same class as $type / same interface as $type
-         * Match by class in source
-         * Match by Interface in source
-         * Match by class in constructors
-         * Match by Interface in constructors
-        */
-        # echo("searching for delegate parameter: name=$name,type=$type,isScalar=$isScalar, scalarContainerId=$scalarContainerId\n");
-        if (isset($this->source[$name]) === true) {
-            if ($isScalar === true) {
-                return $this;
+        #echo("TRying to construct id=$id,type=$type\n");
+        if ($id != '' && isset($this->constructors[$id]) === true) {
+            #echo("Checking by constructor id: $id\n");
+            if ($type == '' || is_null($type) === true) {
+                # can't perform type check, so just assume this id will work
+                return $this->constructors[$id];
             } else {
-                if (is_object($this->source[$name]) === true) {
-                    if (get_class($this->source[$name]) == $type) {
-                        return $this;
-                    }
-                    if (in_array($type, class_implements($this->source[$name])) === true) {
-                        return $this;
-                    }
+                if ($type === $this->constructors[$id]->getType()){
+                    return $this->constructors[$id];
                 }
             }
         }
 
-        if (isset($this->source[$scalarContainerId]) === true) {
-            if ($isScalar === true) {
-                return $this;
-            } else {
-                if (is_object($this->source[$scalarContainerId]) === true) {
-                    if (get_class($this->source[$scalarContainerId]) == $type) {
-                        return $this;
-                    }
-                    if (in_array($type, class_implements($this->source[$scalarContainerId])) === true) {
-                        return $this;
-                    }
-                }
+
+        # if we're trying to instantiate a specific class,
+        # then we check if we've got a constructor for that id and type,
+        # and if we don't, check to see if we've got one for that specific type
+        #echo("Checking for real class: $type\n");
+        foreach ($this->constructors as $constructor) {
+            if ($constructor->canConstructByIdAndType($id, $type) === true) {
+                #echo("found a match for id=$id,type=$type by id and type\n");
+                return $constructor;
             }
         }
 
-        if (isset($this->constructors[$name]) === true) {
-            if (is_callable($this->constructors[$name]['closure']) === true) {
-                return $this;
-            } elseif ($isScalar === false) {
-                if ($this->constructors[$name]['className'] == $type) {
-                    return $this;
-                }
-                if (in_array($type, class_implements($this->constructors[$name]['className'])) === true) {
-                    return $this;
-                }
+        foreach ($this->constructors as $constructor) {
+            if ($constructor->canConstructByClass((string) $type) === true) {
+                #echo("found a match for type=$type by class\n");
+                return $constructor;
             }
         }
 
-        # at this point, the only options left are objects/constructors, so if we've been
-        # looking for a scalar, return false now.
-        if ($isScalar === false) {
-            foreach($this->source as $id => $value) {
-                if (is_object($value) === true) {
-                    if (get_class($value) == $type) {
-                        return $this;
-                    }
-                    if (in_array($type, class_implements($value)) === true) {
-                        return $this;
-                    }
+
+        # Next, check our constructors by interface
+        if (interface_exists($type) === true) {
+            #echo("Checking for real interface: $type\n");
+            foreach ($this->constructors as $constructor) {
+                if ($constructor->canConstructByInterface((string) $type) === true) {
+                    #echo("found a match for type=$type by interface\n");
+                    return $constructor;
                 }
             }
+            return false;
+        }
 
-            foreach($this->constructors as $id => $constructor) {
-                if (class_exists($constructor['className']) === true) {
-                    if ($constructor['className'] == $type) {
-                        return $this;
-                    }
-                    if (in_array($type, class_implements($constructor['className'])) === true) {
-                        return $this;
-                    }
-                }
+        # At this point, the 'type' doesn't represent a real class or interface, but it
+        # could still be a class prefix. So, see if we have a constructor configured
+        # that can construct this object by prefix.
+        foreach ($this->constructors as $constructor) {
+            #echo("Checking for class prefix: $type\n");
+            if ($constructor->canConstructByClassPrefix((string) $id, (string) $type) === true) {
+                $newConstructor = $constructor->copyFromPrefix($id, $type);
+                $this->addConstructor($newConstructor);
+                #echo("found a match for id=$id,type=$type by class prefix\n");
+                # print_r($this->constructors);
+                return $newConstructor;
             }
         }
 
-        foreach ($this->children as $child) {
-            $gotIt = $child->findContainerForDelegateParameter($name, $type, $isScalar, $scalarContainerId);
-            if ($gotIt !== false) {
-                return $gotIt;
+        foreach ($this->children as $childContainer) {
+            $constructor = $childContainer->findConstructor($id, $type);
+            if ($constructor !== false) {
+                return $constructor;
             }
         }
+
+        #echo("Could not find a match\n");
         return false;
     }
 
-    public function buildDelegateParameter(string $name, string $type, bool $isScalar, string $scalarContainerId='')
+    public function addConstructor(Constructor\ConstructorInterface $newConstructor)
     {
-        /* Order to check things:
-         *
-         * Exact match in ->source by name, and type is scalar OR the object in ->source is the same class as $type / same interface as $type
-         * Exact match in ->source by scalarContainerId, and type is scalar OR the object in ->source is the same class as $type / same interface as $type
-         * Exact match in ->constructors by name, and class name is same class as $type / same interface as $type
-         * Match by class in source
-         * Match by Interface in source
-         * Match by class in constructors
-         * Match by Interface in constructors
-        */
-        # echo("searching for delegate parameter: name=$name,type=$type,isScalar=$isScalar, scalarContainerId=$scalarContainerId\n");
-        if (isset($this->source[$name]) === true) {
-            if ($isScalar === true) {
-                return $this->source[$name];
-            } else {
-                if (is_object($this->source[$name]) === true) {
-                    if (get_class($this->source[$name]) == $type) {
-                        return $this->source[$name];
-                    }
-                    if (in_array($type, class_implements($this->source[$name])) === true) {
-                        return $this->source[$name];
-                    }
-                }
-            }
-        }
-
-        if (isset($this->source[$scalarContainerId]) === true) {
-            if ($isScalar === true) {
-                return $this->source[$scalarContainerId];
-            } else {
-                if (is_object($this->source[$scalarContainerId]) === true) {
-                    if (get_class($this->source[$scalarContainerId]) == $type) {
-                        return $this->source[$scalarContainerId];
-                    }
-                    if (in_array($type, class_implements($this->source[$scalarContainerId])) === true) {
-                        return $this->source[$scalarContainerId];
-                    }
-                }
-            }
-        }
-
-        if (isset($this->constructors[$name]) === true) {
-            if (is_callable($this->constructors[$name]['closure']) === true) {
-                return $this->construct($name);
-            } elseif ($isScalar === false) {
-                if ($this->constructors[$name]['className'] == $type) {
-                    return $this->construct($name);
-                }
-                if (in_array($type, class_implements($this->constructors[$name]['className'])) === true) {
-                    return $this->construct($name);
-                }
-            }
-        }
-
-        # at this point, the only options left are objects/constructors, so if we've been
-        # looking for a scalar, return false now.
-        if ($isScalar === false) {
-            foreach($this->source as $id => $value) {
-                if (is_object($value) === true) {
-                    if (get_class($value) == $type) {
-                        return $value;
-                    }
-                    if (in_array($type, class_implements($value)) == true) {
-                        return $value;
-                    }
-                }
-            }
-
-            foreach($this->constructors as $id => $constructor) {
-                if (class_exists($constructor['className']) === true) {
-                    if ($constructor['className'] == $type) {
-                        return $this->construct($id);
-                    }
-
-                    if (in_array($type, class_implements($constructor['className'])) == true) {
-                        return $this->construct($id);
-                    }
-                }
-            }
-        }
-
-        return false;
+        $newConstructor->setConstructorParameterInjector($this);
+        $this->constructors[$newConstructor->getKey()] = $newConstructor;
     }
 
-    public function buildInjectableParameters(array $reflectionParameters, array $configuredParameters) : array
-    {
-        $parameters = [];
-        foreach ($reflectionParameters as $reflectionParameter) {
-            $found = false;
-
-            $name     = $reflectionParameter->getName();
-            $type     = $reflectionParameter->getType();
-            if (is_null($type) === true) {
-                $type = 'string';
-                $isScalar = true;
-            } else {
-                $isScalar = $type->isBuiltin();
-            }
-
-            if (isset($configuredParameters[$name]) === true) {
-                if ($configuredParameters[$name]['type'] == 'fixed') {
-                    $parameters[$reflectionParameter->getPosition()] = $configuredParameters[$name]['value'];
-                    $found = true;
-                } elseif ($configuredParameters[$name]['type'] == 'container') {
-                    $scalarContainerId = $configuredParameters[$name]['value'];
-                    $container = $this->findRootContainer()->findContainerForDelegateParameter($name, $type, $isScalar, $scalarContainerId);
-                    if ($container !== false) {
-                        $parameters[$reflectionParameter->getPosition()] = $container->buildDelegateParameter($name, $type, $isScalar, $scalarContainerId);
-                        $found = true;
-                    }
-                }
-            } else {
-
-                #echo("trying to find a container for parameter, name=$name, type=$type, isScalar=$isScalar\n");
-                $container = $this->findRootContainer()->findContainerForDelegateParameter($name, $type, $isScalar);
-                if ($container !== false) {
-                    #echo("Found a container for parameter, name=$name, type=$type, isScalar=$isScalar\n");
-                    $parameters[$reflectionParameter->getPosition()] = $container->buildDelegateParameter($name, $type, $isScalar);
-                    $found = true;
-                }
-            }
-
-            if ($found === false) {
-                if ($reflectionParameter->isDefaultValueAvailable() === true) {
-                    $parameters[$reflectionParameter->getPosition()] = $reflectionParameter->getDefaultValue();
-                } else {
-                    $parameters[$reflectionParameter->getPosition()] = null;
-                }
-            }
-        }
-        return $parameters;
-    }
-
-    public function construct(string $id, array $constructor=null)
+    public function construct(string $id = '', string $type = null, Constructor\ConstructorInterface $constructor = null)
     {
         if (is_null($constructor) === true) {
-            $constructor = $this->findConstructor($id);
+            $constructor = $this->findRootContainer()->findConstructor($id, $type);
         }
 
-        if ($constructor === false) {
-            if (class_exists($id) === true) {
-                $this->registerConstructor($id, $id);
-                $constructor = $this->constructors[$id];
-            } else {
-                throw new Exception\NotFoundException($id, array_keys($this->constructors));
+        if ($constructor->isSingleton() === true) {
+            if ($this->has($constructor->getKey()) === true) {
+                return $this->get($constructor->getKey());
             }
-        }
-
-        if ($constructor['isSingleton'] === true && isset($this->source[$id]) === true) {
-            return $this->source[$id];
-        }
-
-        if (is_callable($constructor['closure']) === true) {
-
-            $parameters = $this->buildInjectableParameters((new \ReflectionFunction($constructor['closure']))->getParameters(), $constructor['parameters']);
-            $object = $constructor['closure'](...$parameters);
+            $object = $constructor->construct();
+            $this->set($constructor->getKey(), $object);
         } else {
-            $class = $constructor['className'];
-            if (method_exists($class, '__construct') === true) {
-                $parameters = $this->buildInjectableParameters((new \ReflectionMethod($class, '__construct'))->getParameters(), $constructor['parameters']);
-            } else {
-                $parameters = [];
-            }
-
-            $object = new $class(...$parameters);
-        }
-
-        foreach ($constructor['instantiationClosures'] as $closure) {
-            $closure($object, $this);
-        }
-
-        if ($constructor['isSingleton'] === true) {
-            $this->source[$id] = $object;
+            $object = $constructor->construct();
         }
 
         return $object;
     }
 
-    public function execute($idOrObject, string $method)
+    public function determineParameterValue(\ReflectionParameter $parameter, Constructor\Parameter\ParameterInterface $configuredParameter = null, array $values = [])
     {
-        if (is_object($idOrObject) === true) {
-            $object = $idOrObject;
-        } else {
-            if ($this->has($idOrObject) === true) {
-                $object = $this->get($idOrObject);
-            } else {
-                $object = $this->construct($idOrObject);
-            }
-            if (is_object($object) === false) {
-                throw new \Exception("Tried to execute a method on container index $idOrObject, but that index did not contain an object or a constructor");
-            }
+        # extract relevant info from the ReflectionParameter.
+        $name     = $parameter->getName();
+        $type     = ($parameter->hasType() === true)?$parameter->getType()->__toString():'string';
+        $isConstructable = (class_exists($type) || interface_exists($type));
+        $default  = ($parameter->isDefaultValueAvailable() === true)?$parameter->getDefaultValue():null;
+        $position  = $parameter->getPosition();
+
+        # if there's a configured parameter, use this first
+        if (is_null($configuredParameter) === false) {
+            return $configuredParameter->getValue($this);
         }
 
-        $parameters = $this->buildInjectableParameters((new \ReflectionMethod($object, $method))->getParameters(), []);
+        # if a value was passed in by ordinal position in the values array, use this next
+        if (isset($values[$position]) === true) {
+            return $values[$position];
+        }
+        # if a value was passed in by name in the values array, use this next
+        if (isset($values[$name]) === true) {
+            return $values[$name];
+        }
 
+        if ($this->has($name) === true) {
+            return $this->get($name);
+        }
+
+        # if this is not a constructable value and it's in the container by name, use that value
+        if ($isConstructable === false && $this->has($name) === true) {
+            return $this->get($name);
+        }
+
+        # if it's constructable, see if we have a constructor defined for it.
+        if ($isConstructable === true) {
+            $constructor = $this->findConstructor($name, $type);
+
+            # if we still haven't found a way to construct it, but it *is* in theory
+            # constructable, add a new constructor for it and hope everything works out.
+            if ($constructor === false ){
+                echo("Constructing a new name=$name,type=$type\n");
+                $constructor = new Constructor($type, $type, false);
+                $this->addConstructor($constructor);
+            }
+            return $constructor->construct();
+        }
+
+        return $default;
+    }
+
+    public function determineParameterValues(\ReflectionFunctionAbstract $function, array $values = []) : array
+    {
+        $finalValues = [];
+        foreach ($function->getParameters() as $parameter) {
+            $finalValues[] = $this->determineParameterValue(
+                $parameter,
+                ((isset($this->parameters[$parameter->getName()]) === true)?$this->parameters[$parameter->getName()]:null),
+                $values
+            );
+        }
+        return $finalValues;
+    }
+
+    public function call($idOrObjectOrClosure, string $method = '', array $parameters = [])
+    {
+
+        if (is_callable($idOrObjectOrClosure) === true) {
+            $parameters = $this->determineParameterValues(new \ReflectionFunction($idOrObjectOrClosure), $parameters);
+            return $idOrObjectOrClosure(...$parameters);
+        } elseif (is_object($idOrObjectOrClosure) === true) {
+            $object = $idOrObjectOrClosure;
+        } else {
+            $object = $this->construct($idOrObjectOrClosure);
+        }
+        $parameters = $this->determineParameterValues(new \ReflectionMethod($object, $method), $parameters);
         return $object->$method(...$parameters);
     }
 }

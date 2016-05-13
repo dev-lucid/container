@@ -1,5 +1,9 @@
 <?php
 use Lucid\Container\InjectorFactoryContainer;
+use Lucid\Container\Constructor\Constructor;
+use Lucid\Container\Constructor\Parameter\Fixed;
+use Lucid\Container\Constructor\Parameter\Container;
+use Lucid\Container\Constructor\Parameter\Closure;
 
 class ConstructorTest_a
 {
@@ -101,28 +105,31 @@ class ConstructorTest extends \PHPUnit_Framework_TestCase
     public function setup()
     {
         $this->container = new InjectorFactoryContainer();
-        $this->container->registerConstructor('objectA', 'ConstructorTest_a', true);
-        $this->container->registerConstructor('objectB', 'ConstructorTest_b', false);
+        $this->container->addConstructor(new Constructor('objectA', 'ConstructorTest_a', true));
+        $this->container->addConstructor(new Constructor('objectB', 'ConstructorTest_b', false));
+        #$this->container->registerConstructor('objectA', 'ConstructorTest_a', true);
+        #$this->container->registerConstructor('objectB', 'ConstructorTest_b', false);
 
-        $this->container->registerConstructor('objectC', 'ConstructorTest_c');
-        $this->container->addParameter('objectC', 'fixed', 'testProperty', 'c');
+        $constructorC = new Constructor('objectC', 'ConstructorTest_c');
+        $constructorC->addParameter(new Fixed('testProperty', 'c'));
+        $this->container->addConstructor($constructorC);
 
-        $this->container->registerConstructor('objectD', 'ConstructorTest_d');
+        $constructorC = new Constructor('objectD', 'ConstructorTest_d');
+        $constructorC->addParameter(new Container('testProperty', 'testPropertyForD'));
         $this->container->set('testPropertyForD', 'd');
-        $this->container->addParameter('objectD', 'container', 'testProperty', 'testPropertyForD');
+        $this->container->addConstructor($constructorC);
 
-        $this->container->registerConstructor('objectE', 'ConstructorTest_e');
-        $this->container->registerConstructor('objectF', 'ConstructorTest_f');
+        $this->container->addConstructor(new Constructor('objectE', 'ConstructorTest_e'));
+        $this->container->addConstructor(new Constructor('objectF', 'ConstructorTest_f'));
+        $this->container->addConstructor(new Constructor('objectG', 'ConstructorTest_g'));
+        $this->container->addConstructor(new Constructor('view/', 'View__'));
 
-        $this->container->registerConstructor('objectG', 'ConstructorTest_g');
-
-        $this->container->registerConstructor('view/', 'View__');
-
-        $this->container->registerConstructor('objectI', 'ConstructorTest_i');
-        $this->container->addInstantiationClosure('objectI', function($object, $container) {
+        $constructorI = new Constructor('objectI', 'ConstructorTest_i');
+        $constructorI->addPostInstantiationClosure(function($object, $container) {
             $object->setPropertyA(1);
             $object->setPropertyB(2);
         });
+        $this->container->addConstructor($constructorI);
     }
 
     public function testTestConstructor()
@@ -146,8 +153,6 @@ class ConstructorTest extends \PHPUnit_Framework_TestCase
         $this->assertEquals('d', $objC->testProperty);
     }
 
-
-
     public function testTestConstructorFindMatchingObject()
     {
         $this->container->set('testObjectDforConstructE', $this->container->construct('objectD'));
@@ -156,7 +161,6 @@ class ConstructorTest extends \PHPUnit_Framework_TestCase
         $this->assertEquals('d', $objE->testSubObject->testProperty);
     }
 
-
     public function testTestConstructorFindMatchingInterface()
     {
         $this->container->set('testObjectFforConstructG', $this->container->construct('objectF'));
@@ -164,12 +168,12 @@ class ConstructorTest extends \PHPUnit_Framework_TestCase
         $this->assertEquals('f', $objG->testSubObject->testF_function());
     }
 
-
     public function testPrefixConstructors()
     {
         $objH = $this->container->construct('view/ConstructorTest_h');
         $this->assertEquals('f', $objH->testSubObject->testF_function());
     }
+
 
     public function testSingletonParameter()
     {
@@ -206,4 +210,5 @@ class ConstructorTest extends \PHPUnit_Framework_TestCase
         $this->assertEquals(1, $objI->propertyA);
         $this->assertEquals(2, $objI->propertyB);
     }
+
 }

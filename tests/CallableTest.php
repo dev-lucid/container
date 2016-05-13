@@ -1,5 +1,6 @@
 <?php
 use Lucid\Container\InjectorFactoryContainer;
+use Lucid\Container\Constructor\Constructor;
 
 class CallableTest_a
 {
@@ -33,17 +34,17 @@ class CallableTest extends \PHPUnit_Framework_TestCase
         $this->container->set('callable1', function(string $testParam1) {
             return $testParam1;
         });
-        $this->container->registerConstructor('objectA', CallableTest_a::class, false, function(){
+        $this->container->addConstructor(new Constructor('objectA', CallableTest_a::class, false, function(){
             return new CallableTest_a();
-        }, true);
+        }));
 
 
-        $this->container->registerConstructor('objectB', CallableTest_b::class, false, function(){
+        $this->container->addConstructor(new Constructor('objectB', CallableTest_b::class, false, function(){
             return new CallableTest_b();
-        }, true);
+        }));
 
         # this is necessary to use testConstructorClosureExecute
-        $this->container->registerConstructor('objectAnotClosure', 'CallableTest_a', true);
+        $this->container->addConstructor(new Constructor('objectAnotClosure', 'CallableTest_a', true));
 
     }
 
@@ -60,7 +61,7 @@ class CallableTest extends \PHPUnit_Framework_TestCase
 
     public function testConstructorClosureExecute()
     {
-        $this->assertEquals('a', $this->container->execute('objectB', 'testMethod2'));
+        $this->assertEquals('a', $this->container->call('objectB', 'testMethod2'));
     }
 }
 
