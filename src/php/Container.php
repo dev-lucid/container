@@ -98,7 +98,7 @@ class Container implements \Interop\Container\ContainerInterface, ContainerInter
                 return $additionalSource;
             }
 
-            throw new Exception\NotFoundException($id, array_keys($this->array()));
+            throw new Exception\NotFoundException($id, array_keys($this->getValues()));
         }
 
         $value =& $this->source[$id];

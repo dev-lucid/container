@@ -60,6 +60,10 @@ class Constructor implements ConstructorInterface
     public function copyFromPrefix(string $id = '', string $type = null)
     {
         $finalClass = str_replace($this->id, $this->type, $id);
+        if (class_exists($finalClass) === false) {
+            $finalClass = str_replace($this->id, $this->type, $type);
+        }
+
         $newConstructor = new Constructor($id, $finalClass, $this->isSingleton, $this->closure);
         return $newConstructor;
     }
@@ -77,7 +81,7 @@ class Constructor implements ConstructorInterface
     public function canConstructByClassPrefix(string $id, string $classToCheck) : bool
     {
         #echo("checking class prefix. id=$id,type=$classToCheck, thisid=".$this->id.",thistype=".$this->type."\n");
-        return (strpos($id, $this->id) === 0);
+        return (strpos($id, $this->id) === 0 || strpos($classToCheck, $this->id) === 0);
     }
 
     public function canConstructByInterface(string $interfaceToCheck) : bool

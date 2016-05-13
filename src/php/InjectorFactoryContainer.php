@@ -17,6 +17,8 @@ namespace Lucid\Container;
  */
 class InjectorFactoryContainer extends Container implements InjectorFactoryInterface, Constructor\Parameter\ParameterInjectorInterface
 {
+    protected $constructors = [];
+
     protected function getFromAdditionalSources(string $id)
     {
         $constructor = $this->findConstructor($id);
@@ -84,7 +86,7 @@ class InjectorFactoryContainer extends Container implements InjectorFactoryInter
         # could still be a class prefix. So, see if we have a constructor configured
         # that can construct this object by prefix.
         foreach ($this->constructors as $constructor) {
-            #echo("Checking for class prefix: $type\n");
+            # echo("Checking for class prefix: $type\n");
             if ($constructor->canConstructByClassPrefix((string) $id, (string) $type) === true) {
                 $newConstructor = $constructor->copyFromPrefix($id, $type);
                 $this->addConstructor($newConstructor);
@@ -115,6 +117,13 @@ class InjectorFactoryContainer extends Container implements InjectorFactoryInter
     {
         if (is_null($constructor) === true) {
             $constructor = $this->findRootContainer()->findConstructor($id, $type);
+            #echo("Condition 1: /".($constructor === false)."/\n");
+            #echo("Condition 2: /".(class_exists($id))."/\n");
+            #echo("need to create an arbitrary constructor for id=$id,type=$type\n");
+            if ($constructor === false && class_exists($id) === true) {
+                $constructor = new Constructor\Constructor($id, $id);
+                $this->addConstructor($constructor);
+            }
         }
 
         if ($constructor->isSingleton() === true) {
@@ -165,12 +174,11 @@ class InjectorFactoryContainer extends Container implements InjectorFactoryInter
         # if it's constructable, see if we have a constructor defined for it.
         if ($isConstructable === true) {
             $constructor = $this->findConstructor($name, $type);
-
             # if we still haven't found a way to construct it, but it *is* in theory
             # constructable, add a new constructor for it and hope everything works out.
             if ($constructor === false ){
-                echo("Constructing a new name=$name,type=$type\n");
-                $constructor = new Constructor($type, $type, false);
+                #echo("Constructing a new name=$name,type=$type\n");
+                $constructor = new Constructor\Constructor($type, $type, false);
                 $this->addConstructor($constructor);
             }
             return $constructor->construct();
