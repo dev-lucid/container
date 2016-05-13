@@ -95,6 +95,7 @@ class Constructor implements ConstructorInterface
         if (is_callable($this->closure) === true) {
             $closure  = $this->closure;
             $function = new \ReflectionFunction($closure);
+            $values['constructor'] = $this;
             $finalParameters = $this->constructorParameterInjector->determineParameterValues($function, $values);
             $object = $closure(...$finalParameters);
         } else {
