@@ -16,9 +16,23 @@ class Container implements \Interop\Container\ContainerInterface, ContainerInter
 
     protected $source             = [];
     protected $requiredInterfaces = [];
-
+    protected $debugLogger        = null;
+    
     public function __construct()
     {
+    }
+    
+    public function _debug(string $message)
+    {
+        $logger = $this->debugLogger;
+        if (is_null($logger) === false) {
+            $logger(__CLASS__.': '.$message);
+        }
+    }
+    
+    public function setDebugLogger(Callable $logger)
+    {
+        $this->debugLogger = $logger;
     }
 
     public function requireInterfacesForIndex(string $id, ...$interfaces) : ContainerInterface

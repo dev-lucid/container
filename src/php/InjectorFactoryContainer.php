@@ -37,15 +37,26 @@ class InjectorFactoryContainer extends Container implements InjectorFactoryInter
             $type = $id;
         }
 
-        #echo("TRying to construct id=$id,type=$type\n");
+        $this->_debug("Trying to construct id=$id,type=$type\n");
         if ($id != '' && isset($this->constructors[$id]) === true) {
             #echo("Checking by constructor id: $id\n");
             if ($type == '' || is_null($type) === true) {
+                $this->_debug("Found a match by id = $id, but could not perform type checking because no type was specified. Returning match by id");
                 # can't perform type check, so just assume this id will work
                 return $this->constructors[$id];
             } else {
-                if ($type === $this->constructors[$id]->getType()){
+                $constructorType = $this->constructors[$id]->getType();
+                if ($type === $constructorType){
+                    $this->_debug("Found a match by id and type: $id/$type");
                     return $this->constructors[$id];
+                } else if (class_exists($type) === true && in_array($type, class_parents($constructorType)) === true){
+                    $this->_debug("Found a match by id=$id, Constructor for $id is class $constructorType, which inherits from $type!");
+                    return $this->constructors[$id];
+                } else if (interface_exists($type) === true  && in_array($type, class_implements($constructorType)) === true){
+                    $this->_debug("Found a match by id=$id, and type is actually an interface. Constructor for $id is class $constructorType, which implements this interface!");
+                    return $this->constructors[$id];
+                } else {
+                    $this->_debug("Found a match by id=$id, but type did not match. Wanted $type, found $constructorType");
                 }
             }
         }
@@ -57,14 +68,14 @@ class InjectorFactoryContainer extends Container implements InjectorFactoryInter
         #echo("Checking for real class: $type\n");
         foreach ($this->constructors as $constructor) {
             if ($constructor->canConstructByIdAndType($id, $type) === true) {
-                #echo("found a match for id=$id,type=$type by id and type\n");
+                $this->_debug("found a match for id=$id,type=$type by id and type\n");
                 return $constructor;
             }
         }
 
         foreach ($this->constructors as $constructor) {
             if ($constructor->canConstructByClass((string) $type) === true) {
-                #echo("found a match for type=$type by class\n");
+                $this->_debug("found a match for type=$type by class\n");
                 return $constructor;
             }
         }
@@ -75,7 +86,7 @@ class InjectorFactoryContainer extends Container implements InjectorFactoryInter
             #echo("Checking for real interface: $type\n");
             foreach ($this->constructors as $constructor) {
                 if ($constructor->canConstructByInterface((string) $type) === true) {
-                    #echo("found a match for type=$type by interface\n");
+                    $this->_debug("found a match for type=$type by interface\n");
                     return $constructor;
                 }
             }
@@ -86,11 +97,11 @@ class InjectorFactoryContainer extends Container implements InjectorFactoryInter
         # could still be a class prefix. So, see if we have a constructor configured
         # that can construct this object by prefix.
         foreach ($this->constructors as $constructor) {
-            # echo("Checking for class prefix: $type\n");
+            $this->_debug("Checking for class prefix: $type\n");
             if ($constructor->canConstructByClassPrefix((string) $id, (string) $type) === true) {
                 $newConstructor = $constructor->copyFromPrefix($id, $type);
                 $this->addConstructor($newConstructor);
-                #echo("found a match for id=$id,type=$type by class prefix\n");
+                $this->_debug("found a match for id=$id,type=$type by class prefix\n");
                 # print_r($this->constructors);
                 return $newConstructor;
             }
@@ -103,7 +114,7 @@ class InjectorFactoryContainer extends Container implements InjectorFactoryInter
             }
         }
 
-        #echo("Could not find a match\n");
+        $this->_debug("Could not find a match for $id/$type\n");
         return false;
     }
 
@@ -115,24 +126,28 @@ class InjectorFactoryContainer extends Container implements InjectorFactoryInter
 
     public function construct(string $id = '', string $type = null, Constructor\ConstructorInterface $constructor = null)
     {
+        $this->_debug("Constructing $id / $type. Using passed constructor: " . is_object($constructor));
         if (is_null($constructor) === true) {
             $constructor = $this->findRootContainer()->findConstructor($id, $type);
             #echo("Condition 1: /".($constructor === false)."/\n");
             #echo("Condition 2: /".(class_exists($id))."/\n");
             #echo("need to create an arbitrary constructor for id=$id,type=$type\n");
             if ($constructor === false && class_exists($id) === true) {
+                $this->_debug('Could not locate constructor internally, creating new one for '.$type);
                 $constructor = new Constructor\Constructor($id, $id);
                 $this->addConstructor($constructor);
             }
         }
 
         if ($constructor->isSingleton() === true) {
+            $this->_debug("$id/$type is a singleton, will store new instance as ".$constructor->getKey());
             if ($this->has($constructor->getKey()) === true) {
                 return $this->get($constructor->getKey());
             }
             $object = $constructor->construct();
             $this->set($constructor->getKey(), $object);
         } else {
+            $this->_debug("$id/$type is NOT a singleton, constructing a new instance");
             $object = $constructor->construct();
         }
 
@@ -181,7 +196,9 @@ class InjectorFactoryContainer extends Container implements InjectorFactoryInter
                 $constructor = new Constructor\Constructor($type, $type, false);
                 $this->addConstructor($constructor);
             }
-            return $constructor->construct();
+            
+            $this->_debug("Constructing parameter value $name/$type.");
+            return $this->construct($name, $type, $constructor);
         }
 
         return $default;
